@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DialogARX</class>
+ <widget class="QDialog" name="DialogARX">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>350</width>
+    <height>200</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Ustawienia ARX</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <layout class="QFormLayout" name="formLayout">
+     <item row="0" column="0">
+      <widget class="QLabel" name="labelA"><property name="text"><string>Wielomian A (np. 0.1, 0.2):</string></property></widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="editA"/>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="labelB"><property name="text"><string>Wielomian B (np. 1.0, 0.5):</string></property></widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="editB"/>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="labelK"><property name="text"><string>Opóźnienie k:</string></property></widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QSpinBox" name="spinK"><property name="value"><number>1</number></property></widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation"><enum>Qt::Horizontal</enum></property>
+     <property name="standardButtons"><set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>DialogARX</receiver>
+   <slot>accept()</slot>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>DialogARX</receiver>
+   <slot>reject()</slot>
+  </connection>
+ </connections>
+</ui>
