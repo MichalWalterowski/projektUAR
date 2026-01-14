@@ -3,58 +3,84 @@
 
 #include <vector>
 
-enum TrybGen { Pros = 0, Sin = 1 };
+// Typy wyliczeniowe dla konfiguracji
+enum TrybGen { Prostokatny = 0, Sinusoidalny = 1 };
+enum TrybPID { PrzedCalka = 0, PodCalka = 1 };
 
-class ModelARX {
-    std::vector<double> m_A, m_B;
-    unsigned int m_k;
-    std::vector<double> m_hist_u, m_hist_y;
+// Klasa Generatora sygnału zadanego
+class GeneratorWartosci {
 public:
-    ModelARX(std::vector<double> a = {0.0}, std::vector<double> b = {1.0}, unsigned int k = 1);
-    void setParams(std::vector<double> a, std::vector<double> b, unsigned int k);
+    GeneratorWartosci();
+    void setParams(TrybGen tryb, double okres, double amplituda, double skladowaStala, double wypelnienie);
+    double generuj(int krok);
+    double getVal() const { return m_curr; }
+    void reset() { m_curr = 0; }
+
+private:
+    TrybGen m_tryb;
+    double m_okres;
+    double m_amplituda;
+    double m_skladowaStala;
+    double m_wypelnienie;
+    double m_curr;
+};
+
+// Klasa Regulatora PID z wyborem algorytmu
+class RegulatorPID {
+public:
+    RegulatorPID();
+    void setParams(double k, double ti, double td, TrybPID tryb);
+    double oblicz(double e);
+    void reset();
+
+    // Gettery dla składowych (do wykresów)
+    double getUP() const { return m_up; }
+    double getUI() const { return m_ui; }
+    double getUD() const { return m_ud; }
+
+private:
+    double m_k, m_ti, m_td;
+    TrybPID m_tryb;
+    double m_suma_e, m_ost_e;
+    double m_up, m_ui, m_ud;
+};
+
+// Klasa Modelu ARX
+class ModelARX {
+public:
+    ModelARX();
+    void setParams(const std::vector<double> &a, const std::vector<double> &b, int k);
     double symuluj(double u);
     void reset();
+
+private:
+    std::vector<double> m_a, m_b;
+    int m_k;
+    std::vector<double> m_u, m_y;
 };
 
-class RegulatorPID {
-    double m_k = 1.0, m_Ti = 10.0, m_Td = 0.0;
-    double m_prev_e = 0.0, m_suma_e = 0.0;
-    double m_uP = 0.0, m_uI = 0.0, m_uD = 0.0;
-public:
-    void setParams(double k, double Ti, double Td);
-    double symuluj(double e);
-    void reset();
-    double getUP() const { return m_uP; }
-    double getUI() const { return m_uI; }
-    double getUD() const { return m_uD; }
-};
-
-class GeneratorWartosci {
-    TrybGen m_tryb = Pros;
-    int m_TT = 10; double m_TRZ = 1.0, m_A = 1.0, m_S = 0.0, m_p = 0.5;
-    int m_i = 0; double m_curr = 0.0;
-public:
-    void setParams(TrybGen t, int tt, double trz, double a, double s, double p);
-    double generuj();
-    void reset();
-    double getVal() const { return m_curr; }
-};
-
+// Klasa spinająca cały układ automatyki
 class ProstyUAR {
-    ModelARX m_ARX;
-    RegulatorPID m_PID;
-    GeneratorWartosci m_Gen;
-    double m_y = 0.0, m_e = 0.0, m_u = 0.0;
 public:
     ProstyUAR();
     double symuluj();
     void reset();
-    ModelARX& getARX() { return m_ARX; }
-    RegulatorPID& getPID() { return m_PID; }
-    GeneratorWartosci& getGen() { return m_Gen; }
-    double getY() const { return m_y; }
+
+    GeneratorWartosci& getGen() { return m_gen; }
+    RegulatorPID& getPID() { return m_pid; }
+    ModelARX& getARX() { return m_arx; }
+
     double getE() const { return m_e; }
     double getU() const { return m_u; }
+    double getY() const { return m_y; }
+
+private:
+    GeneratorWartosci m_gen;
+    RegulatorPID m_pid;
+    ModelARX m_arx;
+
+    double m_e, m_u, m_y;
+    int m_krok_licznik;
 };
 
 #endif

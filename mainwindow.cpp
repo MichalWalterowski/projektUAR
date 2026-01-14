@@ -2,9 +2,13 @@
 #include "ui_mainwindow.h"
 #include <QFileDialog>
 #include <QMessageBox>
-#include <vector>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QFile>
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent), ui(new Ui::MainWindow)
+{
     ui->setupUi(this);
     simTimer = new QTimer(this);
 
@@ -18,12 +22,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->gridLayoutCharts->addWidget(plotU, 1, 0);
     ui->gridLayoutCharts->addWidget(plotUComponents, 1, 1);
 
-    if (ui->verticalLayout) {
-        ui->verticalLayout->setStretch(0, 0);
-        ui->verticalLayout->setStretch(1, 1);
-        ui->verticalLayout->setStretch(2, 0);
-    }
-
     setupPlots();
     setupConnections();
     updateARXFromStrings();
@@ -31,164 +29,111 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 MainWindow::~MainWindow() { delete ui; }
 
-void MainWindow::setupPlots()
-{
-    // --- 1. WYKRES: SYGNAŁ WYJŚCIOWY I WARTOŚĆ ZADANA ---
-    plotY->addLayer("title", plotY->layer("main"), QCustomPlot::limAbove);
-    graphY_zadana = plotY->addGraph();
-    graphY_zadana->setPen(QPen(Qt::red, 2));
-    graphY_zadana->setName("Wartość zadana (w)");
-
-    graphY_regulowana = plotY->addGraph();
-    graphY_regulowana->setPen(QPen(Qt::blue, 2));
-    graphY_regulowana->setName("Wyjście obiektu (y)");
-
-    plotY->xAxis->setLabel("Czas / Krok symulacji");
-    plotY->yAxis->setLabel("Amplituda sygnałów");
+void MainWindow::setupPlots() {
+    // Wykres 1: Wyjście i Zadana
     plotY->plotLayout()->insertRow(0);
-    plotY->plotLayout()->addElement(0, 0, new QCPTextElement(plotY, "Regulacja: Wyjście - Zadana", QFont("sans", 12, QFont::Bold)));
+    plotY->plotLayout()->addElement(0, 0, new QCPTextElement(plotY, "Sygnały: Wyjście (y) / Zadana (w)", QFont("sans", 10, QFont::Bold)));
+    graphY_zadana = plotY->addGraph(); graphY_zadana->setPen(QPen(Qt::red, 2)); graphY_zadana->setName("Zadana (w)");
+    graphY_regulowana = plotY->addGraph(); graphY_regulowana->setPen(QPen(Qt::blue, 2)); graphY_regulowana->setName("Wyjście (y)");
+    plotY->xAxis->setLabel("Krok (k)"); plotY->yAxis->setLabel("Wartość");
     plotY->legend->setVisible(true);
-    plotY->legend->setFont(QFont("sans", 9));
-    plotY->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
 
-    // --- 2. WYKRES: BŁĄD REGULACJI ---
-    graphError = plotError->addGraph();
-    graphError->setPen(QPen(Qt::darkCyan, 2));
-    graphError->setName("Błąd (e)");
-
-    plotError->xAxis->setLabel("Czas / Krok symulacji");
-    plotError->yAxis->setLabel("Wartość błędu");
+    // Wykres 2: Błąd
     plotError->plotLayout()->insertRow(0);
-    plotError->plotLayout()->addElement(0, 0, new QCPTextElement(plotError, "Błąd regulacji e(t)", QFont("sans", 11, QFont::Bold)));
-    plotError->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+    plotError->plotLayout()->addElement(0, 0, new QCPTextElement(plotError, "Błąd regulacji e(k)", QFont("sans", 10, QFont::Bold)));
+    graphError = plotError->addGraph(); graphError->setPen(QPen(Qt::darkCyan, 2));
+    plotError->xAxis->setLabel("Krok (k)"); plotError->yAxis->setLabel("Wartość błędu");
 
-    // --- 3. WYKRES: SYGNAŁ STERUJĄCY ---
-    graphU = plotU->addGraph();
-    graphU->setPen(QPen(Qt::black, 1.5));
-    graphU->setName("Sterowanie (u)");
-
-    plotU->xAxis->setLabel("Czas / Krok symulacji");
-    plotU->yAxis->setLabel("Wartość sterowania");
+    // Wykres 3: Sterowanie
     plotU->plotLayout()->insertRow(0);
-    plotU->plotLayout()->addElement(0, 0, new QCPTextElement(plotU, "Sygnał sterujący u(t)", QFont("sans", 11, QFont::Bold)));
-    plotU->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+    plotU->plotLayout()->addElement(0, 0, new QCPTextElement(plotU, "Sterowanie u(k)", QFont("sans", 10, QFont::Bold)));
+    graphU = plotU->addGraph(); graphU->setPen(QPen(Qt::black, 2));
+    plotU->xAxis->setLabel("Krok (k)"); plotU->yAxis->setLabel("Wartość u");
 
-    // --- 4. WYKRES: SKŁADOWE PID ---
-    graphU_P = plotUComponents->addGraph();
-    graphU_P->setPen(QPen(Qt::red));
-    graphU_P->setName("Człon P");
-
-    graphU_I = plotUComponents->addGraph();
-    graphU_I->setPen(QPen(Qt::green));
-    graphU_I->setName("Człon I");
-
-    graphU_D = plotUComponents->addGraph();
-    graphU_D->setPen(QPen(Qt::blue));
-    graphU_D->setName("Człon D");
-
-    plotUComponents->xAxis->setLabel("Czas / Krok symulacji");
-    plotUComponents->yAxis->setLabel("Wartość składowych");
+    // Wykres 4: Składowe PID
     plotUComponents->plotLayout()->insertRow(0);
-    plotUComponents->plotLayout()->addElement(0, 0, new QCPTextElement(plotUComponents, "Składowe regulatora PID", QFont("sans", 11, QFont::Bold)));
+    plotUComponents->plotLayout()->addElement(0, 0, new QCPTextElement(plotUComponents, "Składowe PID", QFont("sans", 10, QFont::Bold)));
+    graphU_P = plotUComponents->addGraph(); graphU_P->setPen(QPen(Qt::red)); graphU_P->setName("P");
+    graphU_I = plotUComponents->addGraph(); graphU_I->setPen(QPen(Qt::green)); graphU_I->setName("I");
+    graphU_D = plotUComponents->addGraph(); graphU_D->setPen(QPen(Qt::blue)); graphU_D->setName("D");
+    plotUComponents->xAxis->setLabel("Krok (k)"); plotUComponents->yAxis->setLabel("Wartość składowej");
     plotUComponents->legend->setVisible(true);
-    plotUComponents->legend->setFont(QFont("sans", 8));
-    plotUComponents->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
 
-    // --- WSPÓLNE USTAWIENIA DLA WSZYSTKICH WYKRESÓW ---
-    QList<QCustomPlot*> plots = {plotY, plotError, plotU, plotUComponents};
-    for (QCustomPlot* p : plots) {
-        p->xAxis->grid()->setSubGridVisible(true);
-        p->yAxis->grid()->setSubGridVisible(true);
-        p->setAntialiasedElements(QCP::aeAll);
+    for(QCustomPlot* p : {plotY, plotError, plotU, plotUComponents}) {
+        p->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
         p->xAxis->setRange(0, 100);
-        p->yAxis->setRange(-1.5, 1.5);
+        p->yAxis->setRange(-2, 2);
     }
 }
 
 void MainWindow::setupConnections() {
-    connect(ui->btnStart, SIGNAL(clicked()), this, SLOT(startSimulation()));
-    connect(ui->btnStop, SIGNAL(clicked()), this, SLOT(stopSimulation()));
-    connect(ui->btnReset, SIGNAL(clicked()), this, SLOT(resetSimulation()));
-    connect(ui->btnOpenARX, SIGNAL(clicked()), this, SLOT(openARXDialog()));
-    connect(ui->btnSaveConfig, SIGNAL(clicked()), this, SLOT(saveConfig()));
-    connect(ui->btnLoadConfig, SIGNAL(clicked()), this, SLOT(loadConfig()));
-    connect(simTimer, SIGNAL(timeout()), this, SLOT(simulateStep()));
-}
-
-void MainWindow::updateARXFromStrings() {
-    std::vector<double> va, vb;
-    QStringList aList = m_curA.split(",", Qt::SkipEmptyParts);
-    QStringList bList = m_curB.split(",", Qt::SkipEmptyParts);
-    for(const QString &s : aList) va.push_back(s.trimmed().toDouble());
-    for(const QString &s : bList) vb.push_back(s.trimmed().toDouble());
-
-    if(va.empty()) va.push_back(0.0);
-    if(vb.empty()) vb.push_back(1.0);
-    m_uar.getARX().setParams(va, vb, m_curK);
+    connect(ui->btnStart, &QPushButton::clicked, this, &MainWindow::startSimulation);
+    connect(ui->btnStop, &QPushButton::clicked, this, &MainWindow::stopSimulation);
+    connect(ui->btnReset, &QPushButton::clicked, this, &MainWindow::resetSimulation);
+    connect(ui->btnOpenARX, &QPushButton::clicked, this, &MainWindow::openARXDialog);
+    connect(ui->btnSaveConfig, &QPushButton::clicked, this, &MainWindow::saveConfig);
+    connect(ui->btnLoadConfig, &QPushButton::clicked, this, &MainWindow::loadConfig);
+    connect(simTimer, &QTimer::timeout, this, &MainWindow::simulateStep);
 }
 
 void MainWindow::updateUARFromUI() {
-    m_uar.getPID().setParams(ui->spinK->value(), ui->spinTi->value(), ui->spinTd->value());
-    TrybGen t = (ui->comboTryb->currentIndex() == 0) ? Pros : Sin;
-    m_uar.getGen().setParams(t, ui->spinTT->value(), ui->spinTRZ->value(),
-                             ui->spinAgen->value(), ui->spinSgen->value(), ui->spinPgen->value());
+    m_service.configurePID(ui->spinK->value(), ui->spinTi->value(), ui->spinTd->value(), ui->comboTrybPID->currentIndex());
+    m_service.configureGenerator(ui->comboTryb->currentIndex(), ui->spinOkres->value(), ui->spinAmplituda->value(), ui->spinSkladowaStala->value(), ui->spinWypelnienie->value());
 }
 
 void MainWindow::simulateStep() {
     updateUARFromUI();
-    double y = m_uar.symuluj();
-    double x = m_step;
+    SimulationData d = m_service.nextStep(m_step);
+    graphY_zadana->addData(d.x, d.setpoint); graphY_regulowana->addData(d.x, d.y);
+    graphError->addData(d.x, d.error); graphU->addData(d.x, d.u);
+    graphU_P->addData(d.x, d.uP); graphU_I->addData(d.x, d.uI); graphU_D->addData(d.x, d.uD);
 
-    graphY_zadana->addData(x, m_uar.getGen().getVal());
-    graphY_regulowana->addData(x, y);
-    graphError->addData(x, m_uar.getE());
-    graphU->addData(x, m_uar.getU());
-    graphU_P->addData(x, m_uar.getPID().getUP());
-    graphU_I->addData(x, m_uar.getPID().getUI());
-    graphU_D->addData(x, m_uar.getPID().getUD());
-
-    QList<QCustomPlot*> plots = {plotY, plotError, plotU, plotUComponents};
-    for (QCustomPlot* p : plots) {
+    for (QCustomPlot* p : {plotY, plotError, plotU, plotUComponents}) {
         p->xAxis->setRange(m_step > 100 ? m_step - 100 : 0, m_step + 1);
-        p->rescaleAxes();
-        p->replot();
+        p->rescaleAxes(true); p->replot();
     }
     m_step++;
 }
 
+void MainWindow::startSimulation() { simTimer->start(ui->spinInterval->value()); }
+void MainWindow::stopSimulation() { simTimer->stop(); }
+
+void MainWindow::resetSimulation() {
+    simTimer->stop(); m_service.reset(); m_step = 0;
+    for(auto g : {graphY_zadana, graphY_regulowana, graphError, graphU, graphU_P, graphU_I, graphU_D}) g->data()->clear();
+    for(auto p : {plotY, plotError, plotU, plotUComponents}) { p->xAxis->setRange(0, 100); p->replot(); }
+}
+
 void MainWindow::openARXDialog() {
-    DialogARX diag(this);
-    diag.setData(m_curA, m_curB, m_curK);
+    DialogARX diag(this); diag.setData(m_curA, m_curB, m_curK);
     if (diag.exec() == QDialog::Accepted) {
         m_curA = diag.getA(); m_curB = diag.getB(); m_curK = diag.getK();
         updateARXFromStrings();
     }
 }
 
-void MainWindow::startSimulation() { simTimer->start(ui->spinInterval->value()); }
-void MainWindow::stopSimulation() { simTimer->stop(); }
-void MainWindow::resetSimulation() {
-    simTimer->stop(); m_uar.reset(); m_step = 0;
-    for(auto g : {graphY_zadana, graphY_regulowana, graphError, graphU, graphU_P, graphU_I, graphU_D}) g->data()->clear();
-    for(auto p : {plotY, plotError, plotU, plotUComponents}) p->replot();
-}
+void MainWindow::updateARXFromStrings() { m_service.configureARX(m_curA, m_curB, m_curK); }
 
 void MainWindow::saveConfig() {
     QJsonObject obj;
     obj["K"] = ui->spinK->value(); obj["Ti"] = ui->spinTi->value(); obj["Td"] = ui->spinTd->value();
+    obj["trybPID"] = ui->comboTrybPID->currentIndex();
     obj["curA"] = m_curA; obj["curB"] = m_curB; obj["curK"] = m_curK;
-    obj["Tryb"] = ui->comboTryb->currentIndex();
-    QFile f(QFileDialog::getSaveFileName(this, "Zapisz", "", "*.json"));
-    if (f.open(QIODevice::WriteOnly)) { f.write(QJsonDocument(obj).toJson()); f.close(); }
+    QString path = QFileDialog::getSaveFileName(this, "Zapisz JSON", "", "*.json");
+    if (!path.isEmpty()) {
+        QFile f(path); if (f.open(QIODevice::WriteOnly)) { f.write(QJsonDocument(obj).toJson()); f.close(); }
+    }
 }
 
 void MainWindow::loadConfig() {
-    QFile f(QFileDialog::getOpenFileName(this, "Otwórz", "", "*.json"));
-    if (f.open(QIODevice::ReadOnly)) {
-        QJsonObject obj = QJsonDocument::fromJson(f.readAll()).object();
-        ui->spinK->setValue(obj["K"].toDouble()); ui->spinTi->setValue(obj["Ti"].toDouble()); ui->spinTd->setValue(obj["Td"].toDouble());
-        m_curA = obj["curA"].toString(); m_curB = obj["curB"].toString(); m_curK = obj["curK"].toInt();
-        ui->comboTryb->setCurrentIndex(obj["Tryb"].toInt());
-        updateARXFromStrings(); f.close();
+    QString path = QFileDialog::getOpenFileName(this, "Wczytaj JSON", "", "*.json");
+    if (!path.isEmpty()) {
+        QFile f(path); if (f.open(QIODevice::ReadOnly)) {
+            QJsonObject obj = QJsonDocument::fromJson(f.readAll()).object();
+            ui->spinK->setValue(obj["K"].toDouble()); ui->spinTi->setValue(obj["Ti"].toDouble()); ui->spinTd->setValue(obj["Td"].toDouble());
+            ui->comboTrybPID->setCurrentIndex(obj["trybPID"].toInt());
+            m_curA = obj["curA"].toString(); m_curB = obj["curB"].toString(); m_curK = obj["curK"].toInt();
+            updateARXFromStrings(); f.close();
+        }
     }
 }

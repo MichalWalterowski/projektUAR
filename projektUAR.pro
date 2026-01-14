@@ -5,6 +5,7 @@ TARGET = UARSimulator
 TEMPLATE = app
 
 SOURCES += main.cpp \
+           UARService.cpp \
            dialogarx.cpp \
            mainwindow.cpp \
            UAR.cpp \
@@ -13,6 +14,7 @@ SOURCES += main.cpp \
 
 HEADERS  += mainwindow.h \
             UAR.h \
+            UARService.h \
             dialogarx.h \
             qcustomplot.h \
             dialogarx.h
