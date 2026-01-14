@@ -24,39 +24,41 @@ MainWindow::MainWindow(QWidget *parent)
 
     setupPlots();
     setupConnections();
+
+    // Wartości startowe dla ARX, jeśli plik nie zostanie wczytany
+    m_curA = "1.0, -0.8";
+    m_curB = "0.2";
+    m_curK = 1;
     updateARXFromStrings();
 }
 
 MainWindow::~MainWindow() { delete ui; }
 
 void MainWindow::setupPlots() {
-    // Wykres 1: Wyjście i Zadana
+    // Konfiguracja wykresów (podpisy osi i legendy)
     plotY->plotLayout()->insertRow(0);
-    plotY->plotLayout()->addElement(0, 0, new QCPTextElement(plotY, "Sygnały: Wyjście (y) / Zadana (w)", QFont("sans", 10, QFont::Bold)));
+    plotY->plotLayout()->addElement(0, 0, new QCPTextElement(plotY, "Regulacja: wyjście - zadana", QFont("sans", 10, QFont::Bold)));
     graphY_zadana = plotY->addGraph(); graphY_zadana->setPen(QPen(Qt::red, 2)); graphY_zadana->setName("Zadana (w)");
     graphY_regulowana = plotY->addGraph(); graphY_regulowana->setPen(QPen(Qt::blue, 2)); graphY_regulowana->setName("Wyjście (y)");
-    plotY->xAxis->setLabel("Krok (k)"); plotY->yAxis->setLabel("Wartość");
+    plotY->xAxis->setLabel("Czas [s]"); plotY->yAxis->setLabel("Amplituda sygnałów");
     plotY->legend->setVisible(true);
 
-    // Wykres 2: Błąd
     plotError->plotLayout()->insertRow(0);
-    plotError->plotLayout()->addElement(0, 0, new QCPTextElement(plotError, "Błąd regulacji e(k)", QFont("sans", 10, QFont::Bold)));
+    plotError->plotLayout()->addElement(0, 0, new QCPTextElement(plotError, "Błąd regulacji e(t)", QFont("sans", 10, QFont::Bold)));
     graphError = plotError->addGraph(); graphError->setPen(QPen(Qt::darkCyan, 2));
-    plotError->xAxis->setLabel("Krok (k)"); plotError->yAxis->setLabel("Wartość błędu");
+    plotError->xAxis->setLabel("Czas [s]"); plotError->yAxis->setLabel("Wartość błędu");
 
-    // Wykres 3: Sterowanie
     plotU->plotLayout()->insertRow(0);
-    plotU->plotLayout()->addElement(0, 0, new QCPTextElement(plotU, "Sterowanie u(k)", QFont("sans", 10, QFont::Bold)));
+    plotU->plotLayout()->addElement(0, 0, new QCPTextElement(plotU, "Sygnał sterujący u(t)", QFont("sans", 10, QFont::Bold)));
     graphU = plotU->addGraph(); graphU->setPen(QPen(Qt::black, 2));
-    plotU->xAxis->setLabel("Krok (k)"); plotU->yAxis->setLabel("Wartość u");
+    plotU->xAxis->setLabel("Czas [s]"); plotU->yAxis->setLabel("Wartość sterowania");
 
-    // Wykres 4: Składowe PID
     plotUComponents->plotLayout()->insertRow(0);
-    plotUComponents->plotLayout()->addElement(0, 0, new QCPTextElement(plotUComponents, "Składowe PID", QFont("sans", 10, QFont::Bold)));
+    plotUComponents->plotLayout()->addElement(0, 0, new QCPTextElement(plotUComponents, "Składowe regulatora PID", QFont("sans", 10, QFont::Bold)));
     graphU_P = plotUComponents->addGraph(); graphU_P->setPen(QPen(Qt::red)); graphU_P->setName("P");
     graphU_I = plotUComponents->addGraph(); graphU_I->setPen(QPen(Qt::green)); graphU_I->setName("I");
     graphU_D = plotUComponents->addGraph(); graphU_D->setPen(QPen(Qt::blue)); graphU_D->setName("D");
-    plotUComponents->xAxis->setLabel("Krok (k)"); plotUComponents->yAxis->setLabel("Wartość składowej");
+    plotUComponents->xAxis->setLabel("Czas [s]"); plotUComponents->yAxis->setLabel("Wartości składowych");
     plotUComponents->legend->setVisible(true);
 
     for(QCustomPlot* p : {plotY, plotError, plotU, plotUComponents}) {
@@ -114,26 +116,70 @@ void MainWindow::openARXDialog() {
 
 void MainWindow::updateARXFromStrings() { m_service.configureARX(m_curA, m_curB, m_curK); }
 
+// --- NOWY, PEŁNY ZAPIS ---
 void MainWindow::saveConfig() {
     QJsonObject obj;
-    obj["K"] = ui->spinK->value(); obj["Ti"] = ui->spinTi->value(); obj["Td"] = ui->spinTd->value();
-    obj["trybPID"] = ui->comboTrybPID->currentIndex();
-    obj["curA"] = m_curA; obj["curB"] = m_curB; obj["curK"] = m_curK;
-    QString path = QFileDialog::getSaveFileName(this, "Zapisz JSON", "", "*.json");
+
+    // 1. PID
+    obj["pid_k"] = ui->spinK->value();
+    obj["pid_ti"] = ui->spinTi->value();
+    obj["pid_td"] = ui->spinTd->value();
+    obj["pid_tryb"] = ui->comboTrybPID->currentIndex();
+
+    // 2. Generator
+    obj["gen_tryb"] = ui->comboTryb->currentIndex();
+    obj["gen_okres"] = ui->spinOkres->value();
+    obj["gen_amplituda"] = ui->spinAmplituda->value();
+    obj["gen_stala"] = ui->spinSkladowaStala->value();
+    obj["gen_wypelnienie"] = ui->spinWypelnienie->value();
+
+    // 3. ARX
+    obj["arx_a"] = m_curA;
+    obj["arx_b"] = m_curB;
+    obj["arx_k"] = m_curK;
+
+    // 4. System
+    obj["sys_interval"] = ui->spinInterval->value();
+
+    QString path = QFileDialog::getSaveFileName(this, "Zapisz konfigurację", "", "JSON (*.json)");
     if (!path.isEmpty()) {
-        QFile f(path); if (f.open(QIODevice::WriteOnly)) { f.write(QJsonDocument(obj).toJson()); f.close(); }
+        QFile f(path);
+        if (f.open(QIODevice::WriteOnly)) {
+            f.write(QJsonDocument(obj).toJson());
+            f.close();
+        }
     }
 }
 
+// --- NOWY, PEŁNY ODCZYT ---
 void MainWindow::loadConfig() {
-    QString path = QFileDialog::getOpenFileName(this, "Wczytaj JSON", "", "*.json");
-    if (!path.isEmpty()) {
-        QFile f(path); if (f.open(QIODevice::ReadOnly)) {
-            QJsonObject obj = QJsonDocument::fromJson(f.readAll()).object();
-            ui->spinK->setValue(obj["K"].toDouble()); ui->spinTi->setValue(obj["Ti"].toDouble()); ui->spinTd->setValue(obj["Td"].toDouble());
-            ui->comboTrybPID->setCurrentIndex(obj["trybPID"].toInt());
-            m_curA = obj["curA"].toString(); m_curB = obj["curB"].toString(); m_curK = obj["curK"].toInt();
-            updateARXFromStrings(); f.close();
-        }
+    QString path = QFileDialog::getOpenFileName(this, "Wczytaj konfigurację", "", "JSON (*.json)");
+    if (path.isEmpty()) return;
+
+    QFile f(path);
+    if (f.open(QIODevice::ReadOnly)) {
+        QJsonObject obj = QJsonDocument::fromJson(f.readAll()).object();
+
+        // Blokowanie sygnałów na chwilę zapobiega błędom przy masowej aktualizacji
+        ui->spinK->setValue(obj["pid_k"].toDouble());
+        ui->spinTi->setValue(obj["pid_ti"].toDouble());
+        ui->spinTd->setValue(obj["pid_td"].toDouble());
+        ui->comboTrybPID->setCurrentIndex(obj["pid_tryb"].toInt());
+
+        ui->comboTryb->setCurrentIndex(obj["gen_tryb"].toInt());
+        ui->spinOkres->setValue(obj["gen_okres"].toDouble());
+        ui->spinAmplituda->setValue(obj["gen_amplituda"].toDouble());
+        ui->spinSkladowaStala->setValue(obj["gen_stala"].toDouble());
+        ui->spinWypelnienie->setValue(obj["gen_wypelnienie"].toDouble());
+
+        m_curA = obj["arx_a"].toString();
+        m_curB = obj["arx_b"].toString();
+        m_curK = obj["arx_k"].toInt();
+
+        ui->spinInterval->setValue(obj["sys_interval"].toInt());
+
+        updateARXFromStrings();
+        f.close();
+        QMessageBox::information(this, "Sukces", "Konfiguracja wczytana pomyślnie.");
     }
 }
