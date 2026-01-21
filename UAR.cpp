@@ -6,7 +6,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// --- MODEL ARX ---
+// Model ARX
 
 ModelARX::ModelARX() : gen(std::random_device{}()) {
     m_A = {0.0};
@@ -44,7 +44,7 @@ void ModelARX::setSzum(double std_dev) {
 }
 
 double ModelARX::symuluj(double u_raw) {
-    // 1. Nasycenie wejścia (przed obliczeniami) [cite: 33]
+    // Nasycenie wejścia przed obliczeniami
     double u = u_raw;
     if (m_ogranicz_u) {
         if (u > m_maxU) u = m_maxU;
@@ -55,12 +55,11 @@ double ModelARX::symuluj(double u_raw) {
     m_historia_u.push_front(u);
     if (m_historia_u.size() > 100) m_historia_u.pop_back();
 
-    // 2. Obliczenia ARX
+    // Obliczenia ARX
     double y_temp = 0.0;
 
     // Część od sterowania (B)
     for (size_t i = 0; i < m_B.size(); ++i) {
-        // Indeks w historii: k + i (bo opóźnienie transportowe)
         size_t idx = m_k + i;
         if (idx < m_historia_u.size()) {
             y_temp += m_B[i] * m_historia_u[idx];
@@ -69,18 +68,18 @@ double ModelARX::symuluj(double u_raw) {
 
     // Część od wyjścia (A) - odejmujemy
     for (size_t i = 0; i < m_A.size(); ++i) {
-        size_t idx = i; // y[i-1] to index 0 w deque
+        size_t idx = i;
         if (idx < m_historia_y.size()) {
             y_temp -= m_A[i] * m_historia_y[idx];
         }
     }
 
-    // 3. Dodanie szumu
+    // Dodanie szumu
     if (m_szum > 0.0001) {
         y_temp += dist(gen);
     }
 
-    // 4. Nasycenie wyjścia (po obliczeniach, przed zapisem do bufora) [cite: 35]
+    // Nasycenie wyjścia (po obliczeniach, przed zapisem do bufora)
     if (m_ogranicz_y) {
         if (y_temp > m_maxY) y_temp = m_maxY;
         if (y_temp < m_minY) y_temp = m_minY;
@@ -98,7 +97,7 @@ void ModelARX::reset() {
     std::fill(m_historia_y.begin(), m_historia_y.end(), 0.0);
 }
 
-// --- REGULATOR PID ---
+// Regulator PID
 
 RegulatorPID::RegulatorPID() {}
 
@@ -120,7 +119,7 @@ double RegulatorPID::symuluj(double e) {
         if (m_liczCalk == LiczCalk::Zew) { // Stała PRZED sumą
             m_suma_e += e;
             m_u_I = (1.0 / m_Ti) * m_suma_e;
-        } else { // Stała W sumie (POD całką) [cite: 325]
+        } else { // Stała W sumie (Pod całką)
             m_suma_e += e / m_Ti;
             m_u_I = m_suma_e;
         }
@@ -139,7 +138,7 @@ void RegulatorPID::reset() {
     m_prev_e = 0.0;
 }
 
-// --- GENERATOR ---
+// Generator
 
 GeneratorWartosci::GeneratorWartosci() {}
 
@@ -154,7 +153,7 @@ void GeneratorWartosci::setParams(TrybGen tryb, double okres_rzecz, double ampl,
 }
 
 void GeneratorWartosci::aktualizujT() {
-    // Przeliczenie okresu w sekundach na okres w próbkach [cite: 374]
+    // Przeliczenie okresu w sekundach na okres w próbkach
     if (m_T_T <= 0) m_T_T = 200;
     double probek_na_sekunde = 1000.0 / m_T_T;
     m_T_probki = static_cast<int>(m_T_RZ * probek_na_sekunde);
@@ -186,22 +185,22 @@ void GeneratorWartosci::reset() {
     m_w_i = 0.0;
 }
 
-// --- PROSTY UAR ---
+// Prosty UAR
 
 ProstyUAR::ProstyUAR() {}
 
 double ProstyUAR::symuluj() {
-    // 1. Wyznacz wartość zadaną
+    // Wyznacz wartość zadaną
     double w = m_genWart.generuj();
 
-    // 2. Oblicz uchyb (wartość zadana - poprzednie wyjście obiektu)
-    // UWAGA: Sprzężenie zwrotne bierze y z poprzedniego kroku [cite: 347]
+    // Oblicz uchyb (wartość zadana - poprzednie wyjście obiektu)
+    // Sprzężenie zwrotne bierze y z poprzedniego kroku
     m_e_i = w - m_y_i;
 
-    // 3. Regulator PID
+    // Regulator PID
     m_u_i = m_PID.symuluj(m_e_i);
 
-    // 4. Obiekt ARX
+    // Obiekt ARX
     m_y_i = m_ARX.symuluj(m_u_i);
 
     return m_y_i;

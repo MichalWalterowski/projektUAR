@@ -1,12 +1,12 @@
 #ifndef UARSERVICE_H
 #define UARSERVICE_H
 
-#include <QObject> // Niezbędne dla Timera i Sygnałów
+#include <QObject>
 #include <QTimer>
 #include "UAR.h"
 #include <QString>
 
-// Struktura danych (bez zmian)
+// Struktura danych
 struct SimulationData {
     double x;        // Oś czasu (nr kroku)
     double y;        // Wartość regulowana
@@ -18,7 +18,7 @@ struct SimulationData {
     double uD;       // Składowe PID
 };
 
-class UARService : public QObject { // <--- Dziedziczenie po QObject
+class UARService : public QObject {
     Q_OBJECT
 
 public:
@@ -44,13 +44,13 @@ signals:
     void simulationUpdated(SimulationData data);
 
 private slots:
-    // Slot wewnętrzny, który "tyka" razem z timerem
+    // Slot wewnętrzny, który działa razem z timerem
     void performStep();
 
 private:
     ProstyUAR m_uar;
-    QTimer *m_timer; // Timer jest teraz tutaj (własność serwisu)
-    int m_step = 0;  // Licznik kroków też jest tutaj
+    QTimer *m_timer;
+    int m_step = 0;
 };
 
 #endif // UARSERVICE_H

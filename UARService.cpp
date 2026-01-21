@@ -3,17 +3,17 @@
 
 UARService::UARService(QObject *parent)
     : QObject(parent)
-    , m_timer(new QTimer(this)) // Tworzymy timer jako dziecko serwisu
+    , m_timer(new QTimer(this))
 {
-    // Łączymy tyknięcie timera z naszą metodą obliczeniową
+    // Łączymy tykanie timera z metodą obliczeniową
     connect(m_timer, &QTimer::timeout, this, &UARService::performStep);
 }
 
-// --- STEROWANIE ---
+// Sterowanie
 
 void UARService::startSimulation(int intervalMs) {
     if(intervalMs < 10) intervalMs = 10;
-    m_timer->start(intervalMs); // Uruchamiamy wewnętrzny timer
+    m_timer->start(intervalMs); // Uruchomienie wewnętrznego timera
 }
 
 void UARService::stopSimulation() {
@@ -35,15 +35,15 @@ void UARService::setInterval(int intervalMs) {
     m_timer->setInterval(intervalMs);
 }
 
-// --- GŁÓWNA PĘTLA (Przeniesiona z MainWindow) ---
+// Główna pętla
 
 void UARService::performStep() {
     SimulationData data;
 
-    // 1. Logika (Matematyka)
+    // Logika (Matematyka)
     double y = m_uar.symuluj();
 
-    // 2. Pakowanie danych
+    // Pakowanie danych
     data.x = static_cast<double>(m_step);
     data.y = y;
     data.setpoint = m_uar.getGen().getVal();
@@ -57,12 +57,11 @@ void UARService::performStep() {
 
     m_step++;
 
-    // 3. WYSŁANIE DANYCH DO GUI
-    // To jest kluczowe - wysyłamy sygnał na zewnątrz
+    // Wysłanie danych do gui
     emit simulationUpdated(data);
 }
 
-// --- KONFIGURACJA (Bez zmian w logice, tylko dostosowanie) ---
+// Konfiguracja
 
 void UARService::configurePID(double k, double Ti, double Td, int trybIdx) {
     LiczCalk tryb = (trybIdx == 0) ? LiczCalk::Wew : LiczCalk::Zew;
@@ -70,7 +69,7 @@ void UARService::configurePID(double k, double Ti, double Td, int trybIdx) {
 }
 
 void UARService::configureGenerator(int trybIdx, double okres, double amplituda, double skladowaStala, double wypelnienie, int interwal_ms) {
-    TrybGen tryb = (trybIdx == 0) ? TrybGen::Sin : TrybGen::Pros;
+    TrybGen tryb = (trybIdx == 0) ? TrybGen::Pros : TrybGen::Sin;
     m_uar.getGen().setParams(tryb, okres, amplituda, skladowaStala, wypelnienie, interwal_ms);
 }
 

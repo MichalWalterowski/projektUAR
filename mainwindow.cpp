@@ -4,28 +4,27 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    // ZMIANA: Inicjalizujemy serwis jako wskaźnik (bez timera tutaj)
     , m_service(new UARService(this))
 {
     ui->setupUi(this);
 
-    // 1. Tworzenie wykresów ręcznie i dodawanie do layoutu (zachowane z Twojego kodu)
+    // Tworzenie wykresów ręcznie i dodawanie do layoutu
     m_plotY = new QCustomPlot();
     m_plotError = new QCustomPlot();
     m_plotU = new QCustomPlot();
     m_plotUComp = new QCustomPlot();
 
-    // Dodanie do Grid Layout w GUI (upewnij się, że gridLayoutCharts istnieje w .ui)
+    // Dodanie do Grid Layout w GUI
     ui->gridLayoutCharts->addWidget(m_plotY, 0, 0);
     ui->gridLayoutCharts->addWidget(m_plotError, 0, 1);
     ui->gridLayoutCharts->addWidget(m_plotU, 1, 0);
     ui->gridLayoutCharts->addWidget(m_plotUComp, 1, 1);
 
-    // 2. Konfiguracja wykresów i połączeń
+    // Konfiguracja wykresów i połączeń
     setupPlots();
     setupConnections();
 
-    // 3. Inicjalizacja parametrów początkowych
+    // Inicjalizacja parametrów początkowych
     updateParameters();
     pushARXParamsToService();
 }
@@ -34,9 +33,9 @@ MainWindow::~MainWindow() {
     delete ui;
 }
 
-// --- KONFIGURACJA WYKRESÓW ---
+// Konfiguracja wykresów
 void MainWindow::setupPlots() {
-    // === Wykres 1: Wartość Zadana (Setpoint) i Regulowana (Y) ===
+    // Wykres 1: Wartość Zadana (Setpoint) i Regulowana (Y)
     m_plotY->addGraph(); // Index 0: Wartość regulowana
     m_graphY_regulowana = m_plotY->graph(0);
     m_graphY_regulowana->setPen(QPen(Qt::blue));
@@ -50,14 +49,14 @@ void MainWindow::setupPlots() {
     m_graphY_zadana->setPen(setpointPen);
     m_graphY_zadana->setName("w (Zadana)");
 
-    // --- LEGENDA (Stylizacja z Twojego kodu) ---
+    // Legenda
     m_plotY->legend->setVisible(true);
     QFont legendFont = font();
     legendFont.setPointSize(8);
     m_plotY->legend->setFont(legendFont);
     m_plotY->legend->setFillOrder(QCPLegend::foColumnsFirst);
     m_plotY->legend->setWrap(4);
-    // Pozycjonowanie w prawym górnym rogu (Inset)
+    // Pozycjonowanie w prawym górnym rogu
     m_plotY->axisRect()->insetLayout()->setInsetAlignment(0, Qt::AlignTop | Qt::AlignRight);
     m_plotY->legend->setBrush(QBrush(QColor(255, 255, 255, 150)));
     m_plotY->legend->setBorderPen(Qt::NoPen);
@@ -66,19 +65,19 @@ void MainWindow::setupPlots() {
     m_plotY->setInteraction(QCP::iRangeZoom, true);
     m_plotY->yAxis->setLabel("Wartość");
 
-    // === Wykres 2: Uchyb (Error) ===
+    // Wykres 2: Uchyb (Error)
     m_plotError->addGraph();
     m_graphError = m_plotError->graph(0);
     m_graphError->setPen(QPen(Qt::darkRed));
     m_plotError->yAxis->setLabel("Uchyb (e)");
 
-    // === Wykres 3: Sterowanie (U) ===
+    // Wykres 3: Sterowanie (U)
     m_plotU->addGraph();
     m_graphU = m_plotU->graph(0);
     m_graphU->setPen(QPen(Qt::darkGreen));
     m_plotU->yAxis->setLabel("Sterowanie (u)");
 
-    // === Wykres 4: Składowe PID ===
+    // Wykres 4: Składowe PID
     m_plotUComp->addGraph(); // P
     m_graphU_P = m_plotUComp->graph(0);
     m_graphU_P->setPen(QPen(Qt::red));
@@ -104,9 +103,8 @@ void MainWindow::setupPlots() {
     m_plotUComp->yAxis->setLabel("Składowe PID");
 }
 
-// --- POŁĄCZENIA SYGNAŁÓW I SLOTÓW ---
+// Połączenia sygnałów i slotów
 void MainWindow::setupConnections() {
-    // ZMIANA: Zamiast timera lokalnego, słuchamy serwisu
     connect(m_service, &UARService::simulationUpdated, this, &MainWindow::onSimulationUpdated);
 
     // Przyciski sterujące
@@ -130,11 +128,11 @@ void MainWindow::setupConnections() {
     connect(ui->comboGenType, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::updateParameters);
 }
 
-// --- ODBIÓR DANYCH (Slot zamiast pętli timera) ---
+// Odbiór danych
 void MainWindow::onSimulationUpdated(SimulationData data) {
-    // 1. Dane przychodzą gotowe w argumencie 'data' (nie trzeba ich pobierać)
+    // Dane przychodzą gotowe w argumencie data
 
-    // 2. Dodaj dane do wykresów
+    // Dodaj dane do wykresów
     double t = data.x * (ui->spinInterval->value() / 1000.0); // Czas w sekundach
 
     m_graphY_regulowana->addData(t, data.y);
@@ -145,7 +143,7 @@ void MainWindow::onSimulationUpdated(SimulationData data) {
     m_graphU_I->addData(t, data.uI);
     m_graphU_D->addData(t, data.uD);
 
-    // 3. Przesuwanie okna ("Sliding Window")
+    // Przesuwanie okna
     double windowSize = 10.0;
     double currentTime = t;
     double startTime = currentTime - windowSize;
@@ -163,10 +161,9 @@ void MainWindow::onSimulationUpdated(SimulationData data) {
         m_graphY_zadana->data()->removeBefore(deleteThreshold);
         m_graphError->data()->removeBefore(deleteThreshold);
         m_graphU->data()->removeBefore(deleteThreshold);
-        // Reszta grafów czyszczona automatycznie przez QCP przy okazji
     }
 
-    // 4. Autoskalowanie Osi Y (Smart Scale 10/80/10)
+    // Autoskalowanie Osi Y
     auto applySmartScale = [](QCustomPlot* plot) {
         plot->yAxis->rescale(true);
         QCPRange range = plot->yAxis->range();
@@ -176,7 +173,7 @@ void MainWindow::onSimulationUpdated(SimulationData data) {
             plot->yAxis->setRange(range.lower - 1.0, range.upper + 1.0);
         } else {
             double margin = diff * 0.125;
-            // Dodajemy margines (dla legendy u góry +0.4 może nie być potrzebne przy SmartScale, ale zostawiam jak było)
+            // Dodajemy margines u góry i u dołu
             plot->yAxis->setRange(range.lower - margin, range.upper + margin + 0.4);
         }
     };
@@ -186,31 +183,31 @@ void MainWindow::onSimulationUpdated(SimulationData data) {
     applySmartScale(m_plotU);
     applySmartScale(m_plotUComp);
 
-    // 5. Odświeżenie widoku
+    // Odświeżenie widoku
     m_plotY->replot();
     m_plotError->replot();
     m_plotU->replot();
     m_plotUComp->replot();
 }
 
-// --- STEROWANIE ---
+// Sterowanie
 void MainWindow::startSimulation() {
     int interval = ui->spinInterval->value();
 
     // Zaktualizuj parametry przed startem
     updateParameters();
 
-    // ZMIANA: Zlecenie startu serwisowi
+    // Zlecenie startu dla UARService
     m_service->startSimulation(interval);
 }
 
 void MainWindow::stopSimulation() {
-    // ZMIANA: Zlecenie stopu serwisowi
+    // Zlecenie stopu dla UARService
     m_service->stopSimulation();
 }
 
 void MainWindow::resetSimulation() {
-    // ZMIANA: Reset w serwisie
+    // Reset w UARService
     m_service->resetSimulation();
 
     // Czyszczenie wykresów
@@ -229,11 +226,9 @@ void MainWindow::resetSimulation() {
     m_plotUComp->replot();
 }
 
-// --- KONFIGURACJA W LOCIE ---
+// Konfiguracja w locie
 void MainWindow::updateParameters() {
-    // ZMIANA: Używamy strzałki -> bo m_service jest wskaźnikiem
-
-    // 1. PID
+    // PID
     m_service->configurePID(
         ui->spinK->value(),
         ui->spinTi->value(),
@@ -241,7 +236,7 @@ void MainWindow::updateParameters() {
         ui->comboPIDMethod->currentIndex()
         );
 
-    // 2. Generator
+    // Generator
     m_service->configureGenerator(
         ui->comboGenType->currentIndex(),
         ui->spinOkres->value(),
@@ -257,7 +252,7 @@ void MainWindow::updateParameters() {
     }
 }
 
-// --- OBSŁUGA OKNA DIALOGOWEGO ARX ---
+// Obsługa okna dialogowego ARX
 void MainWindow::openARXDialog() {
     DialogARX dlg(this);
 
@@ -282,13 +277,12 @@ void MainWindow::openARXDialog() {
 }
 
 void MainWindow::pushARXParamsToService() {
-    // ZMIANA: Strzałka ->
     m_service->configureARX(m_curA, m_curB, m_curK,
                             m_curMinU, m_curMaxU, m_curMinY, m_curMaxY, m_curNoise,
                             m_curLimitsOn);
 }
 
-// --- ZAPIS I ODCZYT (JSON) ---
+// Zapis i odczyt (JSON)
 void MainWindow::saveConfig() {
     QString fileName = QFileDialog::getSaveFileName(this, "Zapisz konfigurację", "", "JSON Files (*.json)");
     if (fileName.isEmpty()) return;
