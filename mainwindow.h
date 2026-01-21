@@ -2,7 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QTimer>
+// QTimer nie jest już tu potrzebny, jest w UARService
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QFile>
@@ -25,11 +25,14 @@ public:
     ~MainWindow();
 
 private slots:
+    // --- Nowy slot do odbierania danych z serwisu ---
+    // Zastępuje dawną metodę simulateStep()
+    void onSimulationUpdated(SimulationData data);
+
     // --- Sloty sterujące (przyciski) ---
     void startSimulation();
     void stopSimulation();
     void resetSimulation();
-    void simulateStep();       // Główna pętla timera
 
     // --- Sloty konfiguracji ---
     void openARXDialog();      // Otwiera DialogARX
@@ -41,19 +44,20 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-    QTimer *simTimer;
-    int m_step = 0; // Licznik kroków (oś czasu)
+
+    // USUNIĘTO: QTimer *simTimer; -> Przeniesiony do UARService
+    // USUNIĘTO: int m_step;       -> Przeniesiony do UARService
 
     // Logika biznesowa (Service)
-    UARService m_service;
+    // ZMIANA: Musi być wskaźnikiem, bo dziedziczy po QObject (niekopiowalna)
+    UARService *m_service;
 
     // --- PARAMETRY ARX (Cache) ---
-    // Musimy je pamiętać w MainWindow, aby przekazywać je do Dialogu i Serwisu
     QString m_curA = "0.0";
     QString m_curB = "0.5";
     int m_curK = 1;
 
-    // Parametry nasycenia i szumu [cite: 30-32]
+    // Parametry nasycenia i szumu
     double m_curMinU = -10.0;
     double m_curMaxU = 10.0;
     double m_curMinY = -10.0;
@@ -62,7 +66,6 @@ private:
     bool m_curLimitsOn = true;
 
     // --- WYKRESY (Widgety - kontenery) ---
-    // Wskaźniki do widgetów na UI (przypiszemy je w konstruktorze)
     QCustomPlot *m_plotY;       // Wykres 1: Wartość zadana i regulowana
     QCustomPlot *m_plotError;   // Wykres 2: Uchyb
     QCustomPlot *m_plotU;       // Wykres 3: Sterowanie

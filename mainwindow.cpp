@@ -4,17 +4,18 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , simTimer(new QTimer(this))
+    // ZMIANA: Inicjalizujemy serwis jako wskaźnik (bez timera tutaj)
+    , m_service(new UARService(this))
 {
     ui->setupUi(this);
 
-    // 1. Konfiguracja mapowania wskaźników do widgetów z UI
-    // Zakładam, że w Designerze nazwałeś widgety QCustomPlot odpowiednio:
-    m_plotY = new QCustomPlot(); //ui->plotY;
-    m_plotError = new QCustomPlot(); //ui->plotError;
-    m_plotU = new QCustomPlot(); //ui->plotU;
-    m_plotUComp = new QCustomPlot(); //ui->plotUComp;
+    // 1. Tworzenie wykresów ręcznie i dodawanie do layoutu (zachowane z Twojego kodu)
+    m_plotY = new QCustomPlot();
+    m_plotError = new QCustomPlot();
+    m_plotU = new QCustomPlot();
+    m_plotUComp = new QCustomPlot();
 
+    // Dodanie do Grid Layout w GUI (upewnij się, że gridLayoutCharts istnieje w .ui)
     ui->gridLayoutCharts->addWidget(m_plotY, 0, 0);
     ui->gridLayoutCharts->addWidget(m_plotError, 0, 1);
     ui->gridLayoutCharts->addWidget(m_plotU, 1, 0);
@@ -25,7 +26,6 @@ MainWindow::MainWindow(QWidget *parent)
     setupConnections();
 
     // 3. Inicjalizacja parametrów początkowych
-    // Wysyłamy domyślne ustawienia z GUI do Serwisu
     updateParameters();
     pushARXParamsToService();
 }
@@ -44,20 +44,27 @@ void MainWindow::setupPlots() {
 
     m_plotY->addGraph(); // Index 1: Wartość zadana
     m_graphY_zadana = m_plotY->graph(1);
-    m_graphY_zadana->setPen(QPen(Qt::red)); // Zadana na czerwono
     // Linia przerywana dla wartości zadanej
     QPen setpointPen(Qt::red);
     setpointPen.setStyle(Qt::DashLine);
     m_graphY_zadana->setPen(setpointPen);
     m_graphY_zadana->setName("w (Zadana)");
 
+    // --- LEGENDA (Stylizacja z Twojego kodu) ---
     m_plotY->legend->setVisible(true);
+    QFont legendFont = font();
+    legendFont.setPointSize(8);
+    m_plotY->legend->setFont(legendFont);
+    m_plotY->legend->setFillOrder(QCPLegend::foColumnsFirst);
+    m_plotY->legend->setWrap(4);
+    // Pozycjonowanie w prawym górnym rogu (Inset)
+    m_plotY->axisRect()->insetLayout()->setInsetAlignment(0, Qt::AlignTop | Qt::AlignRight);
+    m_plotY->legend->setBrush(QBrush(QColor(255, 255, 255, 150)));
+    m_plotY->legend->setBorderPen(Qt::NoPen);
+
     m_plotY->setInteraction(QCP::iRangeDrag, true);
     m_plotY->setInteraction(QCP::iRangeZoom, true);
     m_plotY->yAxis->setLabel("Wartość");
-
-    //m_plotY->setAttribute(Qt::WA_StyledBackground, true);
-    //m_plotY->setStyleSheet("border: 3px solid #222222;");
 
     // === Wykres 2: Uchyb (Error) ===
     m_plotError->addGraph();
@@ -88,13 +95,19 @@ void MainWindow::setupPlots() {
     m_graphU_D->setName("D");
 
     m_plotUComp->legend->setVisible(true);
+    m_plotUComp->legend->setFont(legendFont);
+    m_plotUComp->legend->setFillOrder(QCPLegend::foColumnsFirst);
+    m_plotUComp->legend->setWrap(4);
+    m_plotUComp->axisRect()->insetLayout()->setInsetAlignment(0, Qt::AlignTop | Qt::AlignRight);
+    m_plotUComp->legend->setBrush(QBrush(QColor(255, 255, 255, 150)));
+    m_plotUComp->legend->setBorderPen(Qt::NoPen);
     m_plotUComp->yAxis->setLabel("Składowe PID");
 }
 
 // --- POŁĄCZENIA SYGNAŁÓW I SLOTÓW ---
 void MainWindow::setupConnections() {
-    // Timer symulacji
-    connect(simTimer, &QTimer::timeout, this, &MainWindow::simulateStep);
+    // ZMIANA: Zamiast timera lokalnego, słuchamy serwisu
+    connect(m_service, &UARService::simulationUpdated, this, &MainWindow::onSimulationUpdated);
 
     // Przyciski sterujące
     connect(ui->btnStart, &QPushButton::clicked, this, &MainWindow::startSimulation);
@@ -108,8 +121,7 @@ void MainWindow::setupConnections() {
     connect(ui->btnSave, &QPushButton::clicked, this, &MainWindow::saveConfig);
     connect(ui->btnLoad, &QPushButton::clicked, this, &MainWindow::loadConfig);
 
-    // Automatyczna aktualizacja parametrów po zmianie w GUI (PID / Generator)
-    // Łączymy sygnał valueChanged/currentIndexChanged każdego spinboxa z updateParameters
+    // Automatyczna aktualizacja parametrów
     QList<QDoubleSpinBox*> spins = this->findChildren<QDoubleSpinBox*>();
     for(auto spin : spins) {
         connect(spin, &QDoubleSpinBox::editingFinished, this, &MainWindow::updateParameters);
@@ -118,13 +130,12 @@ void MainWindow::setupConnections() {
     connect(ui->comboGenType, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::updateParameters);
 }
 
-// --- GŁÓWNA PĘTLA SYMULACJI ---
-void MainWindow::simulateStep() {
-    // 1. Wykonaj krok symulacji w warstwie usług
-    SimulationData data = m_service.nextStep(m_step);
+// --- ODBIÓR DANYCH (Slot zamiast pętli timera) ---
+void MainWindow::onSimulationUpdated(SimulationData data) {
+    // 1. Dane przychodzą gotowe w argumencie 'data' (nie trzeba ich pobierać)
 
     // 2. Dodaj dane do wykresów
-    double t = data.x * (ui->spinInterval->value() / 1000.0); // Czas w sekundach do wyświetlania
+    double t = data.x * (ui->spinInterval->value() / 1000.0); // Czas w sekundach
 
     m_graphY_regulowana->addData(t, data.y);
     m_graphY_zadana->addData(t, data.setpoint);
@@ -135,65 +146,72 @@ void MainWindow::simulateStep() {
     m_graphU_D->addData(t, data.uD);
 
     // 3. Przesuwanie okna ("Sliding Window")
-    // Domyślne okno obserwacji np. 10 sekund
     double windowSize = 10.0;
     double currentTime = t;
     double startTime = currentTime - windowSize;
     if (startTime < 0) startTime = 0;
 
-    // Ustawienie zakresów Osi X (Czas)
-    m_plotY->xAxis->setRange(startTime, currentTime + 0.5); // +0.5s marginesu z prawej
+    m_plotY->xAxis->setRange(startTime, currentTime + 0.5);
     m_plotError->xAxis->setRange(startTime, currentTime + 0.5);
     m_plotU->xAxis->setRange(startTime, currentTime + 0.5);
     m_plotUComp->xAxis->setRange(startTime, currentTime + 0.5);
 
-    // Usuwanie starych danych z pamięci (dla optymalizacji)
-    // Usuwamy wszystko co jest starsze niż (startTime - 2s zapasu)
+    // Usuwanie starych danych
     double deleteThreshold = startTime - 2.0;
     if (deleteThreshold > 0) {
         m_graphY_regulowana->data()->removeBefore(deleteThreshold);
         m_graphY_zadana->data()->removeBefore(deleteThreshold);
         m_graphError->data()->removeBefore(deleteThreshold);
         m_graphU->data()->removeBefore(deleteThreshold);
-        // ... (reszta grafów też powinna być czyszczona)
+        // Reszta grafów czyszczona automatycznie przez QCP przy okazji
     }
 
-    // 4. Autoskalowanie Osi Y
-    // Ważne: Rescale tylko dla widocznego zakresu
-    m_plotY->yAxis->rescale(true);
-    m_plotError->yAxis->rescale(true);
-    m_plotU->yAxis->rescale(true);
-    m_plotUComp->yAxis->rescale(true);
+    // 4. Autoskalowanie Osi Y (Smart Scale 10/80/10)
+    auto applySmartScale = [](QCustomPlot* plot) {
+        plot->yAxis->rescale(true);
+        QCPRange range = plot->yAxis->range();
+        double diff = range.upper - range.lower;
+
+        if (diff < 0.0001) {
+            plot->yAxis->setRange(range.lower - 1.0, range.upper + 1.0);
+        } else {
+            double margin = diff * 0.125;
+            // Dodajemy margines (dla legendy u góry +0.4 może nie być potrzebne przy SmartScale, ale zostawiam jak było)
+            plot->yAxis->setRange(range.lower - margin, range.upper + margin + 0.4);
+        }
+    };
+
+    applySmartScale(m_plotY);
+    applySmartScale(m_plotError);
+    applySmartScale(m_plotU);
+    applySmartScale(m_plotUComp);
 
     // 5. Odświeżenie widoku
     m_plotY->replot();
     m_plotError->replot();
     m_plotU->replot();
     m_plotUComp->replot();
-
-    m_step++;
 }
 
 // --- STEROWANIE ---
 void MainWindow::startSimulation() {
     int interval = ui->spinInterval->value();
-    if(interval < 10) interval = 10;
 
-    // Zaktualizuj parametry przed startem (na wszelki wypadek)
+    // Zaktualizuj parametry przed startem
     updateParameters();
 
-    simTimer->setInterval(interval);
-    simTimer->start();
+    // ZMIANA: Zlecenie startu serwisowi
+    m_service->startSimulation(interval);
 }
 
 void MainWindow::stopSimulation() {
-    simTimer->stop();
+    // ZMIANA: Zlecenie stopu serwisowi
+    m_service->stopSimulation();
 }
 
 void MainWindow::resetSimulation() {
-    stopSimulation();
-    m_service.reset();
-    m_step = 0;
+    // ZMIANA: Reset w serwisie
+    m_service->resetSimulation();
 
     // Czyszczenie wykresów
     m_graphY_regulowana->data()->clear();
@@ -204,7 +222,7 @@ void MainWindow::resetSimulation() {
     m_graphU_I->data()->clear();
     m_graphU_D->data()->clear();
 
-    // Replot pustych wykresów
+    // Replot
     m_plotY->replot();
     m_plotError->replot();
     m_plotU->replot();
@@ -213,8 +231,10 @@ void MainWindow::resetSimulation() {
 
 // --- KONFIGURACJA W LOCIE ---
 void MainWindow::updateParameters() {
+    // ZMIANA: Używamy strzałki -> bo m_service jest wskaźnikiem
+
     // 1. PID
-    m_service.configurePID(
+    m_service->configurePID(
         ui->spinK->value(),
         ui->spinTi->value(),
         ui->spinTd->value(),
@@ -222,8 +242,7 @@ void MainWindow::updateParameters() {
         );
 
     // 2. Generator
-    // Ważne: Przekazujemy interwał timera, aby poprawnie liczyć czas
-    m_service.configureGenerator(
+    m_service->configureGenerator(
         ui->comboGenType->currentIndex(),
         ui->spinOkres->value(),
         ui->spinAmp->value(),
@@ -232,9 +251,9 @@ void MainWindow::updateParameters() {
         ui->spinInterval->value()
         );
 
-    // Jeśli zmieniono interwał w trakcie pracy, timer trzeba zaktualizować
-    if (simTimer->isActive()) {
-        simTimer->setInterval(ui->spinInterval->value());
+    // Jeśli zmieniono interwał w trakcie pracy
+    if (m_service->isRunning()) {
+        m_service->setInterval(ui->spinInterval->value());
     }
 }
 
@@ -242,14 +261,11 @@ void MainWindow::updateParameters() {
 void MainWindow::openARXDialog() {
     DialogARX dlg(this);
 
-    // 1. Wczytanie aktualnych ustawień do okna (z pamięci podręcznej MainWindow)
     dlg.setData(m_curA, m_curB, m_curK,
                 m_curMinU, m_curMaxU, m_curMinY, m_curMaxY, m_curNoise,
                 m_curLimitsOn);
 
-    // 2. Otwarcie okna i oczekiwanie na wynik
     if (dlg.exec() == QDialog::Accepted) {
-        // 3. Pobranie nowych danych po zatwierdzeniu
         m_curA = dlg.getA();
         m_curB = dlg.getB();
         m_curK = dlg.getK();
@@ -261,16 +277,15 @@ void MainWindow::openARXDialog() {
         m_curNoise = dlg.getNoise();
         m_curLimitsOn = dlg.getLimityWlaczone();
 
-        // 4. Wysłanie danych do serwisu
         pushARXParamsToService();
     }
 }
 
 void MainWindow::pushARXParamsToService() {
-    // Metoda pomocnicza wysyłająca cache do warstwy logiki
-    m_service.configureARX(m_curA, m_curB, m_curK,
-                           m_curMinU, m_curMaxU, m_curMinY, m_curMaxY, m_curNoise,
-                           m_curLimitsOn);
+    // ZMIANA: Strzałka ->
+    m_service->configureARX(m_curA, m_curB, m_curK,
+                            m_curMinU, m_curMaxU, m_curMinY, m_curMaxY, m_curNoise,
+                            m_curLimitsOn);
 }
 
 // --- ZAPIS I ODCZYT (JSON) ---
@@ -280,7 +295,7 @@ void MainWindow::saveConfig() {
 
     QJsonObject root;
 
-    // Zapisujemy ARX
+    // ARX
     QJsonObject arxObj;
     arxObj["A"] = m_curA;
     arxObj["B"] = m_curB;
@@ -293,7 +308,7 @@ void MainWindow::saveConfig() {
     arxObj["limitsOn"] = m_curLimitsOn;
     root["ARX"] = arxObj;
 
-    // Zapisujemy PID
+    // PID
     QJsonObject pidObj;
     pidObj["k"] = ui->spinK->value();
     pidObj["Ti"] = ui->spinTi->value();
@@ -301,7 +316,7 @@ void MainWindow::saveConfig() {
     pidObj["method"] = ui->comboPIDMethod->currentIndex();
     root["PID"] = pidObj;
 
-    // Zapisujemy Generator
+    // Generator
     QJsonObject genObj;
     genObj["type"] = ui->comboGenType->currentIndex();
     genObj["period"] = ui->spinOkres->value();
@@ -342,7 +357,7 @@ void MainWindow::loadConfig() {
         m_curNoise = arxObj["noise"].toDouble();
         m_curLimitsOn = arxObj["limitsOn"].toBool();
 
-        pushARXParamsToService(); // Aktualizacja backendu
+        pushARXParamsToService();
     }
 
     // Wczytanie PID
@@ -365,6 +380,6 @@ void MainWindow::loadConfig() {
         ui->spinInterval->setValue(genObj["interval"].toInt());
     }
 
-    // Wymuszenie aktualizacji wszystkich parametrów
+    // Wymuszenie aktualizacji
     updateParameters();
 }

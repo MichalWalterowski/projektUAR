@@ -1,10 +1,12 @@
 #ifndef UARSERVICE_H
 #define UARSERVICE_H
 
+#include <QObject> // Niezbędne dla Timera i Sygnałów
+#include <QTimer>
 #include "UAR.h"
 #include <QString>
 
-// Struktura do przesyłania kompletu danych do wykresów
+// Struktura danych (bez zmian)
 struct SimulationData {
     double x;        // Oś czasu (nr kroku)
     double y;        // Wartość regulowana
@@ -16,29 +18,39 @@ struct SimulationData {
     double uD;       // Składowe PID
 };
 
-class UARService {
-private:
-    ProstyUAR m_uar;
+class UARService : public QObject { // <--- Dziedziczenie po QObject
+    Q_OBJECT
 
 public:
-    UARService();
+    explicit UARService(QObject *parent = nullptr);
 
-    // Konfiguracja PID
+    // --- Metody sterujące symulacją (Nowość) ---
+    void startSimulation(int intervalMs);
+    void stopSimulation();
+    void resetSimulation();
+    bool isRunning() const;
+    void setInterval(int intervalMs); // Zmiana prędkości w locie
+
+    // --- Konfiguracja (bez zmian) ---
     void configurePID(double k, double Ti, double Td, int trybIdx);
-
-    // Konfiguracja Generatora
     void configureGenerator(int trybIdx, double okres, double amplituda, double skladowaStala, double wypelnienie, int interwal_ms);
 
-    // Konfiguracja ARX (Wektory jako stringi, plus limity i szum)
+    // Pamiętamy o bool limityOn z poprzedniego kroku
     void configureARX(const QString &aStr, const QString &bStr, int k,
                       double uMin, double uMax, double yMin, double yMax, double szumStd, bool limityOn);
 
-    // Krok symulacji
-    SimulationData nextStep(int currentStep);
+signals:
+    // SYGNAŁ: Wysyłany do MainWindow, gdy są nowe dane do narysowania
+    void simulationUpdated(SimulationData data);
 
-    // Reset
-    void reset();
+private slots:
+    // Slot wewnętrzny, który "tyka" razem z timerem
+    void performStep();
 
+private:
+    ProstyUAR m_uar;
+    QTimer *m_timer; // Timer jest teraz tutaj (własność serwisu)
+    int m_step = 0;  // Licznik kroków też jest tutaj
 };
 
-#endif
+#endif // UARSERVICE_H

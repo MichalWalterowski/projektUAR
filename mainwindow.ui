@@ -19,6 +19,9 @@
   <property name="windowTitle">
    <string>Symulator UAR</string>
   </property>
+  <property name="windowIcon">
+   <iconset theme="QIcon::ThemeIcon::EditSelectAll"/>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
     <item>
