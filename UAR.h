@@ -2,85 +2,137 @@
 #define UAR_H
 
 #include <vector>
+#include <deque> // Zmienilem na deque dla wydajnosci
+#include <cstdlib>
+#include <cmath>
+#include <random>
 
-// Typy wyliczeniowe dla konfiguracji
-enum TrybGen { Prostokatny = 0, Sinusoidalny = 1 };
-enum TrybPID { PrzedCalka = 0, PodCalka = 1 };
+//using namespace std;
 
-// Klasa Generatora sygnału zadanego
-class GeneratorWartosci {
-public:
-    GeneratorWartosci();
-    void setParams(TrybGen tryb, double okres, double amplituda, double skladowaStala, double wypelnienie);
-    double generuj(int krok);
-    double getVal() const { return m_curr; }
-    void reset() { m_curr = 0; }
+enum LiczCalk {Wew = 0, Zew = 1}; // Wew: Stala w sumie (zalecane), Zew: Stala przed suma
+enum TrybGen {Sin = 0, Pros = 1};
 
+// Klasa implementująca model ARX
+class ModelARX
+{
 private:
-    TrybGen m_tryb;
-    double m_okres;
-    double m_amplituda;
-    double m_skladowaStala;
-    double m_wypelnienie;
-    double m_curr;
-};
+    std::vector<double> m_A;
+    std::vector<double> m_B;
+    unsigned int m_k; // Opóźnienie
 
-// Klasa Regulatora PID z wyborem algorytmu
-class RegulatorPID {
-public:
-    RegulatorPID();
-    void setParams(double k, double ti, double td, TrybPID tryb);
-    double oblicz(double e);
-    void reset();
+    // Parametry szumu
+    double m_szum = 0.0;
+    std::mt19937 gen;
+    std::normal_distribution<double> dist;
 
-    // Gettery dla składowych (do wykresów)
-    double getUP() const { return m_up; }
-    double getUI() const { return m_ui; }
-    double getUD() const { return m_ud; }
+    // Bufory historii (deque jest szybsze do przesuwania danych)
+    std::deque<double> m_historia_u;
+    std::deque<double> m_historia_y;
 
-private:
-    double m_k, m_ti, m_td;
-    TrybPID m_tryb;
-    double m_suma_e, m_ost_e;
-    double m_up, m_ui, m_ud;
-};
+    // Ograniczenia
+    bool m_ogranicz_u = true; // Domyślnie włączone [cite: 37]
+    bool m_ogranicz_y = true;
+    double m_minU = -10.0, m_maxU = 10.0;
+    double m_minY = -10.0, m_maxY = 10.0;
 
-// Klasa Modelu ARX
-class ModelARX {
 public:
     ModelARX();
-    void setParams(const std::vector<double> &a, const std::vector<double> &b, int k);
-    double symuluj(double u);
-    void reset();
 
-private:
-    std::vector<double> m_a, m_b;
-    int m_k;
-    std::vector<double> m_u, m_y;
+    // Konfiguracja
+    void setParams(const std::vector<double>& wsp_a, const std::vector<double>& wsp_b, unsigned int opoznienie_k);
+    void setLimity(double minU, double maxU, double minY, double maxY, bool wlaczone);
+    void setSzum(double std_dev);
+
+    // Główna funkcja
+    double symuluj(double sterowanie);
+    void reset();
 };
 
-// Klasa spinająca cały układ automatyki
-class ProstyUAR {
+// Klasa implementująca regulator PID
+class RegulatorPID
+{
+private:
+    double m_k = 1.0;
+    double m_Ti = 1.0;
+    double m_Td = 0.0;
+    LiczCalk m_liczCalk = LiczCalk::Wew;
+
+    double m_prev_e = 0.0;
+    double m_suma_e = 0.0;
+
+    // Składowe do wykresów
+    double m_u_P = 0.0;
+    double m_u_I = 0.0;
+    double m_u_D = 0.0;
+
+public:
+    RegulatorPID();
+
+    void setNastawy(double k, double Ti, double Td, LiczCalk tryb);
+    double symuluj(double uchyb);
+    void reset();
+
+    // Gettery do wykresów
+    double getUP() const { return m_u_P; }
+    double getUI() const { return m_u_I; }
+    double getUD() const { return m_u_D; }
+};
+
+// Klasa Generatora
+class GeneratorWartosci
+{
+private:
+    int m_T_probki = 50; // Wyliczony okres w próbkach
+    int m_T_T = 200;     // Interwał timera (ms)
+    double m_T_RZ = 10.0; // Okres rzeczywisty (s)
+
+    int m_i = 0; // Licznik kroków
+
+    double m_A = 1.0;
+    double m_S = 0.0;
+    double m_p = 0.5; // Wypełnienie
+    TrybGen m_tryb = TrybGen::Pros;
+
+    double m_w_i = 0.0; // Ostatnia wartość
+
+    void aktualizujT(); // Przelicza TRZ na T_probki
+
+public:
+    GeneratorWartosci();
+
+    void setParams(TrybGen tryb, double okres_rzecz, double ampl, double off, double wyp, int interwal_ms);
+    double generuj();
+    double getVal() const { return m_w_i; }
+    void reset();
+};
+
+// Klasa implementująca UAR (Kontener)
+class ProstyUAR
+{
+private:
+    ModelARX m_ARX;
+    RegulatorPID m_PID;
+    GeneratorWartosci m_genWart;
+
+    double m_y_i = 0.0;
+    double m_e_i = 0.0;
+    double m_u_i = 0.0;
+
 public:
     ProstyUAR();
+
     double symuluj();
     void reset();
 
-    GeneratorWartosci& getGen() { return m_gen; }
-    RegulatorPID& getPID() { return m_pid; }
-    ModelARX& getARX() { return m_arx; }
+    // Dostep przez referencje (ważne!)
+    ModelARX& getARX() { return m_ARX; }
+    RegulatorPID& getPID() { return m_PID; }
+    GeneratorWartosci& getGen() { return m_genWart; }
 
-    double getE() const { return m_e; }
-    double getU() const { return m_u; }
-    double getY() const { return m_y; }
-
-private:
-    GeneratorWartosci m_gen;
-    RegulatorPID m_pid;
-    ModelARX m_arx;
-
-    double m_e, m_u, m_y;
-    int m_krok_licznik;
+    // Gettery sygnalow
+    double getE() const { return m_e_i; }
+    double getU() const { return m_u_i; }
+    double getY() const { return m_y_i; }
 };
 
 #endif

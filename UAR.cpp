@@ -2,121 +2,216 @@
 #include <cmath>
 #include <algorithm>
 
-// Definicja PI dla uniknięcia błędów M_PI
-#ifndef PI
-#define PI 3.14159265358979323846
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
 #endif
 
-// --- IMPLEMENTACJA GENERATORA ---
-GeneratorWartosci::GeneratorWartosci()
-    : m_tryb(Prostokatny), m_okres(20.0), m_amplituda(1.0), m_skladowaStala(0.0), m_wypelnienie(0.5), m_curr(0.0) {}
+// --- MODEL ARX ---
 
-void GeneratorWartosci::setParams(TrybGen tryb, double okres, double amplituda, double skladowaStala, double wypelnienie) {
-    m_tryb = tryb;
-    m_okres = (okres > 0.1) ? okres : 1.0;
-    m_amplituda = amplituda;
-    m_skladowaStala = skladowaStala;
-    // Zabezpieczenie wypełnienia 0-1
-    m_wypelnienie = (wypelnienie < 0.0) ? 0.0 : (wypelnienie > 1.0 ? 1.0 : wypelnienie);
+ModelARX::ModelARX() : gen(std::random_device{}()) {
+    m_A = {0.0};
+    m_B = {1.0};
+    m_k = 1;
+    // Inicjalizacja buforów zerami
+    m_historia_u.resize(20, 0.0);
+    m_historia_y.resize(20, 0.0);
 }
 
-double GeneratorWartosci::generuj(int krok) {
-    double faza = fmod(static_cast<double>(krok), m_okres) / m_okres;
+void ModelARX::setParams(const std::vector<double>& wsp_a, const std::vector<double>& wsp_b, unsigned int opoznienie_k) {
+    m_A = wsp_a;
+    m_B = wsp_b;
+    m_k = (opoznienie_k < 1) ? 1 : opoznienie_k;
 
-    if (m_tryb == Prostokatny) {
-        m_curr = (faza < m_wypelnienie) ? m_amplituda : 0.0;
-    } else {
-        m_curr = m_amplituda * sin(2.0 * PI * faza);
+    // Rozszerz bufory jeśli potrzeba (z zapasem)
+    size_t required = m_k + m_B.size() + m_A.size() + 5;
+    if (m_historia_u.size() < required) {
+        m_historia_u.resize(required, 0.0);
+        m_historia_y.resize(required, 0.0);
+    }
+}
+
+void ModelARX::setLimity(double minU, double maxU, double minY, double maxY, bool wlaczone) {
+    m_minU = minU; m_maxU = maxU;
+    m_minY = minY; m_maxY = maxY;
+
+    m_ogranicz_u = wlaczone;
+    m_ogranicz_y = wlaczone;
+}
+
+void ModelARX::setSzum(double std_dev) {
+    m_szum = std_dev;
+    if (m_szum > 0.0) dist = std::normal_distribution<double>(0.0, m_szum);
+}
+
+double ModelARX::symuluj(double u_raw) {
+    // 1. Nasycenie wejścia (przed obliczeniami) [cite: 33]
+    double u = u_raw;
+    if (m_ogranicz_u) {
+        if (u > m_maxU) u = m_maxU;
+        if (u < m_minU) u = m_minU;
     }
 
-    m_curr += m_skladowaStala;
-    return m_curr;
-}
+    // Aktualizacja historii sterowania (push_front)
+    m_historia_u.push_front(u);
+    if (m_historia_u.size() > 100) m_historia_u.pop_back();
 
-// --- IMPLEMENTACJA REGULATORA PID ---
-RegulatorPID::RegulatorPID()
-    : m_k(1.0), m_ti(10.0), m_td(0.0), m_tryb(PrzedCalka), m_suma_e(0), m_ost_e(0), m_up(0), m_ui(0), m_ud(0) {}
+    // 2. Obliczenia ARX
+    double y_temp = 0.0;
 
-void RegulatorPID::setParams(double k, double ti, double td, TrybPID tryb) {
-    m_k = k; m_ti = ti; m_td = td; m_tryb = tryb;
-}
-
-double RegulatorPID::oblicz(double e) {
-    m_suma_e += e;
-    double roznica = e - m_ost_e;
-    m_ost_e = e;
-
-    if (m_tryb == PrzedCalka) {
-        // Postać idealna: K * (e + sum_e/Ti + Td*diff)
-        m_up = m_k * e;
-        m_ui = (m_ti > 0) ? (m_k / m_ti) * m_suma_e : 0;
-        m_ud = m_k * m_td * roznica;
-    } else {
-        // Postać równoległa: K*e + sum_e/Ti + Td*diff
-        m_up = m_k * e;
-        m_ui = (m_ti > 0) ? (1.0 / m_ti) * m_suma_e : 0;
-        m_ud = m_td * roznica;
+    // Część od sterowania (B)
+    for (size_t i = 0; i < m_B.size(); ++i) {
+        // Indeks w historii: k + i (bo opóźnienie transportowe)
+        size_t idx = m_k + i;
+        if (idx < m_historia_u.size()) {
+            y_temp += m_B[i] * m_historia_u[idx];
+        }
     }
 
-    return m_up + m_ui + m_ud;
-}
-
-void RegulatorPID::reset() { m_suma_e = 0; m_ost_e = 0; m_up = 0; m_ui = 0; m_ud = 0; }
-
-// --- IMPLEMENTACJA MODELU ARX ---
-ModelARX::ModelARX() : m_k(1) {
-    m_a = {0.0}; m_b = {0.5};
-    m_u.assign(100, 0); m_y.assign(100, 0);
-}
-
-void ModelARX::setParams(const std::vector<double> &a, const std::vector<double> &b, int k) {
-    m_a = a; m_b = b; m_k = k;
-    reset();
-}
-
-double ModelARX::symuluj(double u) {
-    m_u.insert(m_u.begin(), u);
-    double y = 0;
-
-    // Suma b_i * u(k-d-i)
-    for (size_t i = 0; i < m_b.size(); ++i) {
-        int idx = i + m_k;
-        if (idx < (int)m_u.size()) y += m_b[i] * m_u[idx];
+    // Część od wyjścia (A) - odejmujemy
+    for (size_t i = 0; i < m_A.size(); ++i) {
+        size_t idx = i; // y[i-1] to index 0 w deque
+        if (idx < m_historia_y.size()) {
+            y_temp -= m_A[i] * m_historia_y[idx];
+        }
     }
 
-    // Suma a_i * y(k-i)
-    for (size_t i = 0; i < m_a.size(); ++i) {
-        if (i < m_y.size()) y -= m_a[i] * m_y[i];
+    // 3. Dodanie szumu
+    if (m_szum > 0.0001) {
+        y_temp += dist(gen);
     }
 
-    m_y.insert(m_y.begin(), y);
+    // 4. Nasycenie wyjścia (po obliczeniach, przed zapisem do bufora) [cite: 35]
+    if (m_ogranicz_y) {
+        if (y_temp > m_maxY) y_temp = m_maxY;
+        if (y_temp < m_minY) y_temp = m_minY;
+    }
 
-    if (m_u.size() > 100) m_u.pop_back();
-    if (m_y.size() > 100) m_y.pop_back();
+    // Aktualizacja historii wyjścia
+    m_historia_y.push_front(y_temp);
+    if (m_historia_y.size() > 100) m_historia_y.pop_back();
 
-    return y;
+    return y_temp;
 }
 
 void ModelARX::reset() {
-    std::fill(m_u.begin(), m_u.end(), 0.0);
-    std::fill(m_y.begin(), m_y.end(), 0.0);
+    std::fill(m_historia_u.begin(), m_historia_u.end(), 0.0);
+    std::fill(m_historia_y.begin(), m_historia_y.end(), 0.0);
 }
 
-// --- IMPLEMENTACJA UAR ---
-ProstyUAR::ProstyUAR() : m_e(0), m_u(0), m_y(0), m_krok_licznik(0) {}
+// --- REGULATOR PID ---
+
+RegulatorPID::RegulatorPID() {}
+
+void RegulatorPID::setNastawy(double k, double Ti, double Td, LiczCalk tryb) {
+    m_k = k;
+    m_Ti = Ti;
+    m_Td = Td;
+    m_liczCalk = tryb;
+}
+
+double RegulatorPID::symuluj(double e) {
+    // Proporcjonalna
+    m_u_P = m_k * e;
+
+    // Całkująca
+    if (m_Ti == 0.0) {
+        m_u_I = 0.0; // Człon wyłączony
+    } else {
+        if (m_liczCalk == LiczCalk::Zew) { // Stała PRZED sumą
+            m_suma_e += e;
+            m_u_I = (1.0 / m_Ti) * m_suma_e;
+        } else { // Stała W sumie (POD całką) [cite: 325]
+            m_suma_e += e / m_Ti;
+            m_u_I = m_suma_e;
+        }
+    }
+
+    // Różniczkująca
+    m_u_D = m_Td * (e - m_prev_e);
+    m_prev_e = e;
+
+    return m_u_P + m_u_I + m_u_D;
+}
+
+void RegulatorPID::reset() {
+    m_u_P = m_u_I = m_u_D = 0.0;
+    m_suma_e = 0.0;
+    m_prev_e = 0.0;
+}
+
+// --- GENERATOR ---
+
+GeneratorWartosci::GeneratorWartosci() {}
+
+void GeneratorWartosci::setParams(TrybGen tryb, double okres_rzecz, double ampl, double off, double wyp, int interwal_ms) {
+    m_tryb = tryb;
+    m_T_RZ = okres_rzecz;
+    m_A = ampl;
+    m_S = off;
+    m_p = wyp;
+    m_T_T = interwal_ms;
+    aktualizujT();
+}
+
+void GeneratorWartosci::aktualizujT() {
+    // Przeliczenie okresu w sekundach na okres w próbkach [cite: 374]
+    if (m_T_T <= 0) m_T_T = 200;
+    double probek_na_sekunde = 1000.0 / m_T_T;
+    m_T_probki = static_cast<int>(m_T_RZ * probek_na_sekunde);
+    if (m_T_probki < 1) m_T_probki = 1;
+}
+
+double GeneratorWartosci::generuj() {
+    // Obliczenie fazy sygnału
+    int faza = m_i % m_T_probki;
+    double val = 0.0;
+
+    if (m_tryb == TrybGen::Sin) {
+        double ratio = (double)faza / (double)m_T_probki;
+        val = m_A * std::sin(ratio * 2.0 * M_PI) + m_S;
+    } else {
+        // Prostokąt
+        double limit = m_p * m_T_probki;
+        if (faza < limit) val = m_A + m_S;
+        else val = m_S;
+    }
+
+    m_w_i = val;
+    m_i++;
+    return val;
+}
+
+void GeneratorWartosci::reset() {
+    m_i = 0;
+    m_w_i = 0.0;
+}
+
+// --- PROSTY UAR ---
+
+ProstyUAR::ProstyUAR() {}
 
 double ProstyUAR::symuluj() {
-    double w = m_gen.generuj(m_krok_licznik);
-    m_e = w - m_y;
-    m_u = m_pid.oblicz(m_e);
-    m_y = m_arx.symuluj(m_u);
-    m_krok_licznik++;
-    return m_y;
+    // 1. Wyznacz wartość zadaną
+    double w = m_genWart.generuj();
+
+    // 2. Oblicz uchyb (wartość zadana - poprzednie wyjście obiektu)
+    // UWAGA: Sprzężenie zwrotne bierze y z poprzedniego kroku [cite: 347]
+    m_e_i = w - m_y_i;
+
+    // 3. Regulator PID
+    m_u_i = m_PID.symuluj(m_e_i);
+
+    // 4. Obiekt ARX
+    m_y_i = m_ARX.symuluj(m_u_i);
+
+    return m_y_i;
 }
 
 void ProstyUAR::reset() {
-    m_gen.reset();
-    m_pid.reset();
-    m_arx.reset();
-    m_e = 0; m_u = 0; m_y = 0; m_krok_licznik = 0;
+    m_ARX.reset();
+    m_PID.reset();
+    m_genWart.reset();
+    m_y_i = 0.0;
+    m_e_i = 0.0;
+    m_u_i = 0.0;
 }

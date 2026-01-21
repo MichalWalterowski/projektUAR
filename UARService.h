@@ -4,32 +4,41 @@
 #include "UAR.h"
 #include <QString>
 
-// Struktura przechowująca dane pojedynczego kroku symulacji dla wykresów
+// Struktura do przesyłania kompletu danych do wykresów
 struct SimulationData {
-    double x, y, setpoint, error, u, uP, uI, uD;
+    double x;        // Oś czasu (nr kroku)
+    double y;        // Wartość regulowana
+    double setpoint; // Wartość zadana
+    double error;    // Uchyb
+    double u;        // Sterowanie
+    double uP;
+    double uI;
+    double uD;       // Składowe PID
 };
 
 class UARService {
+private:
+    ProstyUAR m_uar;
+
 public:
     UARService();
 
-    // Konfiguracja regulatora z nowym parametrem trybu (stała przed/pod całką)
+    // Konfiguracja PID
     void configurePID(double k, double Ti, double Td, int trybIdx);
 
-    // Konfiguracja generatora z 5 parametrami (w tym Okres)
-    void configureGenerator(int tryb, double okres, double amplituda, double skladowaStala, double wypelnienie);
+    // Konfiguracja Generatora
+    void configureGenerator(int trybIdx, double okres, double amplituda, double skladowaStala, double wypelnienie, int interwal_ms);
 
-    // Konfiguracja modelu ARX na podstawie ciągów znaków z UI
-    void configureARX(const QString &aStr, const QString &bStr, int k);
+    // Konfiguracja ARX (Wektory jako stringi, plus limity i szum)
+    void configureARX(const QString &aStr, const QString &bStr, int k,
+                      double uMin, double uMax, double yMin, double yMax, double szumStd, bool limityOn);
 
-    // Obliczenie kolejnego kroku symulacji
+    // Krok symulacji
     SimulationData nextStep(int currentStep);
 
-    // Resetowanie stanu układu
+    // Reset
     void reset();
 
-private:
-    ProstyUAR m_uar;
 };
 
 #endif

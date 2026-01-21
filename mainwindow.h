@@ -6,7 +6,10 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QFile>
-#include "UARService.h" // Nowa warstwa usług
+#include <QMessageBox>
+#include <QFileDialog>
+
+#include "UARService.h"
 #include "qcustomplot.h"
 #include "dialogarx.h"
 
@@ -22,35 +25,65 @@ public:
     ~MainWindow();
 
 private slots:
-    void simulateStep();
+    // --- Sloty sterujące (przyciski) ---
     void startSimulation();
     void stopSimulation();
     void resetSimulation();
+    void simulateStep();       // Główna pętla timera
+
+    // --- Sloty konfiguracji ---
+    void openARXDialog();      // Otwiera DialogARX
+    void updateParameters();   // Pobiera dane z GUI głównego (PID/Generator)
+
+    // --- Sloty zapisu/odczytu ---
     void saveConfig();
     void loadConfig();
-    void openARXDialog();
 
 private:
     Ui::MainWindow *ui;
     QTimer *simTimer;
-    int m_step = 0;
+    int m_step = 0; // Licznik kroków (oś czasu)
 
-    // Warstwa usług zarządzająca logiką
+    // Logika biznesowa (Service)
     UARService m_service;
 
-    // Domyślne parametry ARX zapobiegające niestabilności
+    // --- PARAMETRY ARX (Cache) ---
+    // Musimy je pamiętać w MainWindow, aby przekazywać je do Dialogu i Serwisu
     QString m_curA = "0.0";
     QString m_curB = "0.5";
     int m_curK = 1;
 
-    // Wskaźniki do wykresów i serii danych
-    QCustomPlot *plotY, *plotError, *plotU, *plotUComponents;
-    QCPGraph *graphY_zadana, *graphY_regulowana, *graphError, *graphU, *graphU_P, *graphU_I, *graphU_D;
+    // Parametry nasycenia i szumu [cite: 30-32]
+    double m_curMinU = -10.0;
+    double m_curMaxU = 10.0;
+    double m_curMinY = -10.0;
+    double m_curMaxY = 10.0;
+    double m_curNoise = 0.0;
+    bool m_curLimitsOn = true;
 
-    void setupPlots();
-    void setupConnections();
-    void updateUARFromUI();
-    void updateARXFromStrings();
+    // --- WYKRESY (Widgety - kontenery) ---
+    // Wskaźniki do widgetów na UI (przypiszemy je w konstruktorze)
+    QCustomPlot *m_plotY;       // Wykres 1: Wartość zadana i regulowana
+    QCustomPlot *m_plotError;   // Wykres 2: Uchyb
+    QCustomPlot *m_plotU;       // Wykres 3: Sterowanie
+    QCustomPlot *m_plotUComp;   // Wykres 4: Składowe PID
+
+    // --- SERIE DANYCH (Linie na wykresach) ---
+    QCPGraph *m_graphY_zadana;
+    QCPGraph *m_graphY_regulowana;
+
+    QCPGraph *m_graphError;
+
+    QCPGraph *m_graphU;
+
+    QCPGraph *m_graphU_P;
+    QCPGraph *m_graphU_I;
+    QCPGraph *m_graphU_D;
+
+    // --- METODY POMOCNICZE ---
+    void setupPlots();             // Konfiguracja wyglądu (osie, kolory)
+    void setupConnections();       // Podpięcie sygnałów
+    void pushARXParamsToService(); // Wysłanie parametrów ARX do backendu
 };
 
 #endif // MAINWINDOW_H

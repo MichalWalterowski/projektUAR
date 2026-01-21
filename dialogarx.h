@@ -11,10 +11,20 @@ class DialogARX : public QDialog {
 public:
     explicit DialogARX(QWidget *parent = nullptr);
     ~DialogARX();
-    void setData(QString a, QString b, int k);
+
+    void setData(QString a, QString b, int k, double minU, double maxU, double minY, double maxY, double noise, bool limityWlaczone);
     QString getA() const;
     QString getB() const;
+
     int getK() const;
+
+    double getMinU() const;
+    double getMaxU() const;
+    double getMinY() const;
+    double getMaxY() const;
+    double getNoise() const;
+
+    bool getLimityWlaczone() const;
 private:
     Ui::DialogARX *ui;
 };
