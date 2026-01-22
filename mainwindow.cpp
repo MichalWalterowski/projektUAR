@@ -149,18 +149,19 @@ void MainWindow::onSimulationUpdated(SimulationData data) {
     double startTime = currentTime - windowSize;
     if (startTime < 0) startTime = 0;
 
-    m_plotY->xAxis->setRange(startTime, currentTime + 0.5);
+    // Ustawienie zakresów osi X
+    m_plotY->xAxis->setRange(startTime, currentTime + 0.5);     // 0.5 marginsu z prawej
     m_plotError->xAxis->setRange(startTime, currentTime + 0.5);
     m_plotU->xAxis->setRange(startTime, currentTime + 0.5);
     m_plotUComp->xAxis->setRange(startTime, currentTime + 0.5);
 
     // Usuwanie starych danych
-    double deleteThreshold = startTime - 2.0;
-    if (deleteThreshold > 0) {
-        m_graphY_regulowana->data()->removeBefore(deleteThreshold);
-        m_graphY_zadana->data()->removeBefore(deleteThreshold);
-        m_graphError->data()->removeBefore(deleteThreshold);
-        m_graphU->data()->removeBefore(deleteThreshold);
+    double deleteOldData = startTime - 2.0;
+    if (deleteOldData > 0) {
+        m_graphY_regulowana->data()->removeBefore(deleteOldData);
+        m_graphY_zadana->data()->removeBefore(deleteOldData);
+        m_graphError->data()->removeBefore(deleteOldData);
+        m_graphU->data()->removeBefore(deleteOldData);
     }
 
     // Autoskalowanie Osi Y
