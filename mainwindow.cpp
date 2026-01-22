@@ -15,10 +15,10 @@ MainWindow::MainWindow(QWidget *parent)
     m_plotUComp = new QCustomPlot();
 
     // Dodanie do Grid Layout w GUI
-    ui->gridLayoutCharts->addWidget(m_plotY, 0, 0);
-    ui->gridLayoutCharts->addWidget(m_plotError, 0, 1);
-    ui->gridLayoutCharts->addWidget(m_plotU, 1, 0);
-    ui->gridLayoutCharts->addWidget(m_plotUComp, 1, 1);
+    ui->layoutPlotY->addWidget(m_plotY);
+    ui->layoutPlotError->addWidget(m_plotError);
+    ui->layoutPlotU->addWidget(m_plotU);
+    ui->layoutPlotUComp->addWidget(m_plotUComp);
 
     // Konfiguracja wykresów i połączeń
     setupPlots();
@@ -149,11 +149,12 @@ void MainWindow::onSimulationUpdated(SimulationData data) {
     double startTime = currentTime - windowSize;
     if (startTime < 0) startTime = 0;
 
+
     // Ustawienie zakresów osi X
-    m_plotY->xAxis->setRange(startTime, currentTime + 0.5);     // 0.5 marginsu z prawej
-    m_plotError->xAxis->setRange(startTime, currentTime + 0.5);
-    m_plotU->xAxis->setRange(startTime, currentTime + 0.5);
-    m_plotUComp->xAxis->setRange(startTime, currentTime + 0.5);
+    m_plotY->xAxis->setRange(startTime, currentTime);     // marginsu z prawej
+    m_plotError->xAxis->setRange(startTime, currentTime);
+    m_plotU->xAxis->setRange(startTime, currentTime);
+    m_plotUComp->xAxis->setRange(startTime, currentTime);
 
     // Usuwanie starych danych
     double deleteOldData = startTime - 2.0;
@@ -168,12 +169,12 @@ void MainWindow::onSimulationUpdated(SimulationData data) {
     auto applySmartScale = [](QCustomPlot* plot) {
         plot->yAxis->rescale(true);
         QCPRange range = plot->yAxis->range();
-        double diff = range.upper - range.lower;
+        double d = range.upper - range.lower;
 
-        if (diff < 0.0001) {
+        if (d < 0.0001) {
             plot->yAxis->setRange(range.lower - 1.0, range.upper + 1.0);
         } else {
-            double margin = diff * 0.125;
+            double margin = d * 0.125;
             // Dodajemy margines u góry i u dołu
             plot->yAxis->setRange(range.lower - margin, range.upper + margin + 0.4);
         }

@@ -89,6 +89,9 @@
        <property name="inputMethodHints">
         <set>Qt::ImhFormattedNumbersOnly</set>
        </property>
+       <property name="minimum">
+        <double>-99.989999999999995</double>
+       </property>
       </widget>
      </item>
      <item>
@@ -113,7 +116,11 @@
       </widget>
      </item>
      <item>
-      <widget class="QDoubleSpinBox" name="spinMinY"/>
+      <widget class="QDoubleSpinBox" name="spinMinY">
+       <property name="minimum">
+        <double>-99.989999999999995</double>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QLabel" name="labelMaxY">

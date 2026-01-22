@@ -19,11 +19,8 @@
   <property name="windowTitle">
    <string>Symulator UAR</string>
   </property>
-  <property name="windowIcon">
-   <iconset theme="QIcon::ThemeIcon::EditSelectAll"/>
-  </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,1,0">
     <item>
      <layout class="QHBoxLayout" name="horizontalLayoutParams">
       <item>
@@ -144,9 +141,6 @@
          </item>
          <item row="0" column="3">
           <widget class="QDoubleSpinBox" name="spinOkres">
-           <property name="minimum">
-            <double>0.100000000000000</double>
-           </property>
            <property name="maximum">
             <double>9999.000000000000000</double>
            </property>
@@ -201,7 +195,95 @@
      </layout>
     </item>
     <item>
-     <layout class="QGridLayout" name="gridLayoutCharts"/>
+     <layout class="QGridLayout" name="gridLayoutCharts">
+      <item row="0" column="0">
+       <widget class="QFrame" name="framePlotY">
+        <property name="styleSheet">
+         <string notr="true">QFrame#framePlotY { border: 2px solid red; background-color: white; border-radius: 4px; }</string>
+        </property>
+        <layout class="QVBoxLayout" name="layoutPlotY">
+         <property name="leftMargin">
+          <number>2</number>
+         </property>
+         <property name="topMargin">
+          <number>2</number>
+         </property>
+         <property name="rightMargin">
+          <number>2</number>
+         </property>
+         <property name="bottomMargin">
+          <number>2</number>
+         </property>
+        </layout>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QFrame" name="framePlotError">
+        <property name="autoFillBackground">
+         <bool>false</bool>
+        </property>
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <layout class="QVBoxLayout" name="layoutPlotError">
+         <property name="leftMargin">
+          <number>2</number>
+         </property>
+         <property name="topMargin">
+          <number>2</number>
+         </property>
+         <property name="rightMargin">
+          <number>2</number>
+         </property>
+         <property name="bottomMargin">
+          <number>2</number>
+         </property>
+        </layout>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QFrame" name="framePlotU">
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <layout class="QVBoxLayout" name="layoutPlotU">
+         <property name="leftMargin">
+          <number>2</number>
+         </property>
+         <property name="topMargin">
+          <number>2</number>
+         </property>
+         <property name="rightMargin">
+          <number>2</number>
+         </property>
+         <property name="bottomMargin">
+          <number>2</number>
+         </property>
+        </layout>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QFrame" name="framePlotUComp">
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <layout class="QVBoxLayout" name="layoutPlotUComp">
+         <property name="leftMargin">
+          <number>2</number>
+         </property>
+         <property name="topMargin">
+          <number>2</number>
+         </property>
+         <property name="rightMargin">
+          <number>2</number>
+         </property>
+         <property name="bottomMargin">
+          <number>2</number>
+         </property>
+        </layout>
+       </widget>
+      </item>
+     </layout>
     </item>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayoutBtns">
