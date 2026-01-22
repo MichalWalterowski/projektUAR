@@ -149,7 +149,6 @@ void MainWindow::onSimulationUpdated(SimulationData data) {
     double startTime = currentTime - windowSize;
     if (startTime < 0) startTime = 0;
 
-
     // Ustawienie zakresów osi X
     m_plotY->xAxis->setRange(startTime, currentTime);     // marginsu z prawej
     m_plotError->xAxis->setRange(startTime, currentTime);
