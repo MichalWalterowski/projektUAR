@@ -118,15 +118,15 @@ double RegulatorPID::symuluj(double e) {
     } else {
         if (m_liczCalk == LiczCalk::Zew) { // Stała PRZED sumą
             m_suma_e += e;
-            m_u_I = (1.0 / m_Ti) * m_suma_e;
+            m_u_I = m_suma_e / m_Ti;
         } else { // Stała W sumie (Pod całką)
             m_suma_e += e / m_Ti;
-            m_u_I = m_suma_e;
+            m_u_I = m_suma_e * m_k;
         }
     }
 
     // Różniczkująca
-    m_u_D = m_Td * (e - m_prev_e);
+    m_u_D = m_Td * (e - m_prev_e) * m_k;
     m_prev_e = e;
 
     return m_u_P + m_u_I + m_u_D;
