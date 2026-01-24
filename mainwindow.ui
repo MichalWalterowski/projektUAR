@@ -53,7 +53,7 @@
          <item row="1" column="1">
           <widget class="QDoubleSpinBox" name="spinTi">
            <property name="value">
-            <double>10.000000000000000</double>
+            <double>0.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -78,12 +78,12 @@
           <widget class="QComboBox" name="comboPIDMethod">
            <item>
             <property name="text">
-             <string>Stała K przed całką</string>
+             <string>Stała przed całką</string>
             </property>
            </item>
            <item>
             <property name="text">
-             <string>Stała K pod całką</string>
+             <string>Stała pod całką</string>
             </property>
            </item>
           </widget>
@@ -145,7 +145,7 @@
             <double>9999.000000000000000</double>
            </property>
            <property name="value">
-            <double>20.000000000000000</double>
+            <double>10.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -180,17 +180,63 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="btnARX">
-        <property name="minimumSize">
-         <size>
-          <width>150</width>
-          <height>50</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>Parametry ARX</string>
-        </property>
-       </widget>
+       <layout class="QFormLayout" name="formLayout">
+        <item row="1" column="0" colspan="2">
+         <widget class="QPushButton" name="btnARX">
+          <property name="minimumSize">
+           <size>
+            <width>150</width>
+            <height>50</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Parametry ARX</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="labelWidth">
+          <property name="text">
+           <string>Szerokość okna w sekundach</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QSpinBox" name="spinWidth">
+          <property name="maximumSize">
+           <size>
+            <width>100</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="keyboardTracking">
+           <bool>false</bool>
+          </property>
+          <property name="minimum">
+           <number>10</number>
+          </property>
+          <property name="maximum">
+           <number>50</number>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0" colspan="2">
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>0</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
       </item>
      </layout>
     </item>

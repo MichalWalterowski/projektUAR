@@ -144,7 +144,8 @@ void MainWindow::onSimulationUpdated(SimulationData data) {
     m_graphU_D->addData(t, data.uD);
 
     // Przesuwanie okna
-    double windowSize = 10.0;
+    double windowSize = (double)ui->spinWidth->value();
+
     double currentTime = t;
     double startTime = currentTime - windowSize;
     if (startTime < 0) startTime = 0;
@@ -156,12 +157,15 @@ void MainWindow::onSimulationUpdated(SimulationData data) {
     m_plotUComp->xAxis->setRange(startTime, currentTime);
 
     // Usuwanie starych danych
-    double deleteOldData = startTime - 2.0;
+    double deleteOldData = startTime - 40.0;
     if (deleteOldData > 0) {
         m_graphY_regulowana->data()->removeBefore(deleteOldData);
         m_graphY_zadana->data()->removeBefore(deleteOldData);
         m_graphError->data()->removeBefore(deleteOldData);
         m_graphU->data()->removeBefore(deleteOldData);
+        m_graphU_P->data()->removeBefore(deleteOldData);
+        m_graphU_I->data()->removeBefore(deleteOldData);
+        m_graphU_D->data()->removeBefore(deleteOldData);
     }
 
     // Autoskalowanie Osi Y

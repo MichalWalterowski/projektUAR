@@ -110,15 +110,15 @@ void RegulatorPID::setNastawy(double k, double Ti, double Td, LiczCalk tryb) {
 
 double RegulatorPID::symuluj(double e) {
     // Proporcjonalna
-    m_u_P = m_k * e;
+    m_u_P = m_k * e * 1.0;
 
     // Całkująca
     if (m_Ti == 0.0) {
         m_u_I = 0.0; // Człon wyłączony
     } else {
-        if (m_liczCalk == LiczCalk::Zew) { // Stała PRZED sumą
-            m_suma_e += e;
-            m_u_I = m_suma_e / m_Ti;
+        if (m_liczCalk == LiczCalk::Wew) { // Stała PRZED sumą
+            m_suma_e += e / m_Ti;
+            m_u_I = m_suma_e * 1.0;
         } else { // Stała W sumie (Pod całką)
             m_suma_e += e / m_Ti;
             m_u_I = m_suma_e * m_k;
