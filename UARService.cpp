@@ -72,6 +72,8 @@ void UARService::configurePID(double k, double Ti, double Td, int trybIdx) {
     m_uar.getPID().setNastawy(k, Ti, Td, tryb);
 }
 
+void UARService::resetPID() { m_uar.resetPID(); }
+
 void UARService::configureGenerator(int trybIdx, double okres, double amplituda, double skladowaStala, double wypelnienie, int interwal_ms) {
     TrybGen tryb = (trybIdx == 0) ? TrybGen::Pros : TrybGen::Sin;
     m_uar.getGen().setParams(tryb, okres, amplituda, skladowaStala, wypelnienie, interwal_ms);

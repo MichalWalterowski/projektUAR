@@ -113,6 +113,7 @@ void MainWindow::setupConnections() {
     connect(ui->btnStart, &QPushButton::clicked, this, &MainWindow::startSimulation);
     connect(ui->btnStop, &QPushButton::clicked, this, &MainWindow::stopSimulation);
     connect(ui->btnReset, &QPushButton::clicked, this, &MainWindow::resetSimulation);
+    connect(ui->btnPIDReset, &QPushButton::clicked, this, &MainWindow::resetPID);
 
     // Przycisk konfiguracji ARX
     connect(ui->btnARX, &QPushButton::clicked, this, &MainWindow::openARXDialog);
@@ -237,6 +238,11 @@ void MainWindow::resetSimulation() {
     m_plotUComp->replot();
 
     aktualnyCzas = 0.0;
+}
+
+void MainWindow::resetPID()
+{
+    m_service->resetPID();
 }
 
 // Konfiguracja w locie

@@ -31,6 +31,7 @@ private slots:
     void startSimulation();
     void stopSimulation();
     void resetSimulation();
+    void resetPID();
 
     // Sloty konfiguracji
     void openARXDialog();      // Otwiera DialogARX

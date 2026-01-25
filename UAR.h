@@ -71,6 +71,7 @@ public:
     void setNastawy(double k, double Ti, double Td, LiczCalk tryb);
     double symuluj(double uchyb);
     void reset();
+    void resetMemory();
 
     // Gettery do wykresów
     double getUP() const { return m_u_P; }
@@ -123,6 +124,7 @@ public:
 
     double symuluj();
     void reset();
+    void resetPID();
 
     // Dostep przez referencje (ważne!)
     ModelARX& getARX() { return m_ARX; }

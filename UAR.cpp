@@ -138,6 +138,14 @@ void RegulatorPID::reset() {
     m_prev_e = 0.0;
 }
 
+void RegulatorPID::resetMemory() {
+    m_suma_e = 0.0;
+    m_prev_e = 0.0;
+
+    m_u_I = 0.0;
+    m_u_D = 0.0;
+}
+
 // Generator
 
 GeneratorWartosci::GeneratorWartosci() {}
@@ -213,4 +221,8 @@ void ProstyUAR::reset() {
     m_y_i = 0.0;
     m_e_i = 0.0;
     m_u_i = 0.0;
+}
+
+void ProstyUAR::resetPID()  {
+    m_PID.resetMemory();
 }
