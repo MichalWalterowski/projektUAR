@@ -35,6 +35,10 @@ void UARService::setInterval(int intervalMs) {
     m_timer->setInterval(intervalMs);
 }
 
+double UARService::getInterval() const  {
+    return m_timer->interval() / 1000.0;
+}
+
 // Główna pętla
 
 void UARService::performStep() {

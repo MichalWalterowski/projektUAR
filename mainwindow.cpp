@@ -20,6 +20,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->layoutPlotU->addWidget(m_plotU);
     ui->layoutPlotUComp->addWidget(m_plotUComp);
 
+    aktualnyCzas = 0.0;
+
     // Konfiguracja wykresów i połączeń
     setupPlots();
     setupConnections();
@@ -124,8 +126,10 @@ void MainWindow::setupConnections() {
     for(auto spin : spins) {
         connect(spin, &QDoubleSpinBox::editingFinished, this, &MainWindow::updateParameters);
     }
+
     connect(ui->comboPIDMethod, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::updateParameters);
     connect(ui->comboGenType, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::updateParameters);
+    connect(ui->spinInterval, &QDoubleSpinBox::editingFinished, this, &MainWindow::updateParameters);
 }
 
 // Odbiór danych
@@ -133,28 +137,28 @@ void MainWindow::onSimulationUpdated(SimulationData data) {
     // Dane przychodzą gotowe w argumencie data
 
     // Dodaj dane do wykresów
-    double t = data.x * (ui->spinInterval->value() / 1000.0); // Czas w sekundach
+    double t = m_service->getInterval(); //data.x * (ui->spinInterval->value() / 1000.0); // Czas w sekundach
 
-    m_graphY_regulowana->addData(t, data.y);
-    m_graphY_zadana->addData(t, data.setpoint);
-    m_graphError->addData(t, data.error);
-    m_graphU->addData(t, data.u);
-    m_graphU_P->addData(t, data.uP);
-    m_graphU_I->addData(t, data.uI);
-    m_graphU_D->addData(t, data.uD);
+    m_graphY_regulowana->addData(aktualnyCzas, data.y);
+    m_graphY_zadana->addData(aktualnyCzas, data.setpoint);
+    m_graphError->addData(aktualnyCzas, data.error);
+    m_graphU->addData(aktualnyCzas, data.u);
+    m_graphU_P->addData(aktualnyCzas, data.uP);
+    m_graphU_I->addData(aktualnyCzas, data.uI);
+    m_graphU_D->addData(aktualnyCzas, data.uD);
 
     // Przesuwanie okna
     double windowSize = (double)ui->spinWidth->value();
 
-    double currentTime = t;
-    double startTime = currentTime - windowSize;
+    //double currentTime = t;
+    double startTime = aktualnyCzas - windowSize;
     if (startTime < 0) startTime = 0;
 
     // Ustawienie zakresów osi X
-    m_plotY->xAxis->setRange(startTime, currentTime);     // marginsu z prawej
-    m_plotError->xAxis->setRange(startTime, currentTime);
-    m_plotU->xAxis->setRange(startTime, currentTime);
-    m_plotUComp->xAxis->setRange(startTime, currentTime);
+    m_plotY->xAxis->setRange(startTime, aktualnyCzas);     // marginsu z prawej
+    m_plotError->xAxis->setRange(startTime, aktualnyCzas);
+    m_plotU->xAxis->setRange(startTime, aktualnyCzas);
+    m_plotUComp->xAxis->setRange(startTime, aktualnyCzas);
 
     // Usuwanie starych danych
     double deleteOldData = startTime - 40.0;
@@ -193,6 +197,8 @@ void MainWindow::onSimulationUpdated(SimulationData data) {
     m_plotError->replot();
     m_plotU->replot();
     m_plotUComp->replot();
+
+    aktualnyCzas += t;
 }
 
 // Sterowanie
@@ -229,6 +235,8 @@ void MainWindow::resetSimulation() {
     m_plotError->replot();
     m_plotU->replot();
     m_plotUComp->replot();
+
+    aktualnyCzas = 0.0;
 }
 
 // Konfiguracja w locie
@@ -255,6 +263,7 @@ void MainWindow::updateParameters() {
     if (m_service->isRunning()) {
         m_service->setInterval(ui->spinInterval->value());
     }
+        ui->StatusBar->showMessage("Parametry zaktualizowane!", 2000);
 }
 
 // Obsługa okna dialogowego ARX

@@ -30,6 +30,7 @@ public:
     void resetSimulation();
     bool isRunning() const;
     void setInterval(int intervalMs); // Zmiana prędkości w locie
+    double getInterval() const;
 
     // --- Konfiguracja (bez zmian) ---
     void configurePID(double k, double Ti, double Td, int trybIdx);

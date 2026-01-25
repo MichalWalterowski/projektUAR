@@ -59,6 +59,8 @@ private:
     double m_curNoise = 0.0;
     bool m_curLimitsOn = true;
 
+    double aktualnyCzas;
+
     // Wykresy (Widgety)
     QCustomPlot *m_plotY;       // Wykres 1: Wartość zadana i regulowana
     QCustomPlot *m_plotError;   // Wykres 2: Uchyb
