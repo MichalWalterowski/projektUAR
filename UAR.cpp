@@ -9,8 +9,8 @@
 // Model ARX
 
 ModelARX::ModelARX() : gen(std::random_device{}()) {
-    m_A = {0.0};
-    m_B = {1.0};
+    m_A = {0.5, 0.0, 0.0};
+    m_B = {-0.5, 0.0, 0.0};
     m_k = 1;
     // Inicjalizacja buforów zerami
     m_historia_u.resize(20, 0.0);

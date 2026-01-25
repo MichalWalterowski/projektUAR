@@ -3,6 +3,7 @@
 #include <QDialog>
 #include <QLineEdit>
 #include <QSpinBox>
+#include <QMessageBox>
 
 namespace Ui { class DialogARX; }
 
@@ -25,6 +26,9 @@ public:
     double getNoise() const;
 
     bool getLimityWlaczone() const;
+
+private slots:
+    void accept();
 private:
     Ui::DialogARX *ui;
 };

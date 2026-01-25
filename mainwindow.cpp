@@ -263,7 +263,7 @@ void MainWindow::updateParameters() {
     if (m_service->isRunning()) {
         m_service->setInterval(ui->spinInterval->value());
     }
-        ui->StatusBar->showMessage("Parametry zaktualizowane!", 2000);
+        ui->StatusBar->showMessage("Zaktualizowano parametry", 2000);
 }
 
 // Obsługa okna dialogowego ARX
