@@ -155,8 +155,8 @@ void GeneratorWartosci::setParams(TrybGen tryb, double okres_rzecz, double ampl,
 void GeneratorWartosci::aktualizujT() {
     // Przeliczenie okresu w sekundach na okres w próbkach
     if (m_T_T <= 0) m_T_T = 200;
-    double probek_na_sekunde = 1000.0 / m_T_T;
-    m_T_probki = static_cast<int>(m_T_RZ * probek_na_sekunde);
+    double probek_na_sekunde = m_T_RZ * 1000.0 / m_T_T;
+    m_T_probki = static_cast<int>(probek_na_sekunde);
     if (m_T_probki < 1) m_T_probki = 1;
 }
 
@@ -172,7 +172,7 @@ double GeneratorWartosci::generuj() {
         // Prostokąt
         double limit = m_p * m_T_probki;
         if (faza < limit) val = m_A + m_S;
-        else val = m_S;
+        else val = -m_A + m_S;
     }
 
     m_w_i = val;
