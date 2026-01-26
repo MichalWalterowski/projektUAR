@@ -35,6 +35,7 @@ public:
     // --- Konfiguracja (bez zmian) ---
     void configurePID(double k, double Ti, double Td, int trybIdx);
     void resetPID();
+    // void updateTrybCalk();
     void configureGenerator(int trybIdx, double okres, double amplituda, double skladowaStala, double wypelnienie, int interwal_ms);
 
     // Pamiętamy o bool limityOn z poprzedniego kroku

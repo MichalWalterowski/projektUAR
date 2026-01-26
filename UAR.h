@@ -69,6 +69,7 @@ public:
     RegulatorPID();
 
     void setNastawy(double k, double Ti, double Td, LiczCalk tryb);
+    // void updateTrybCalki();
     double symuluj(double uchyb);
     void reset();
     void resetMemory();

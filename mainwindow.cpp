@@ -162,7 +162,7 @@ void MainWindow::onSimulationUpdated(SimulationData data) {
     m_plotUComp->xAxis->setRange(startTime, aktualnyCzas);
 
     // Usuwanie starych danych
-    double deleteOldData = startTime - 40.0;
+    double deleteOldData = startTime;// - 10.0;
     if (deleteOldData > 0) {
         m_graphY_regulowana->data()->removeBefore(deleteOldData);
         m_graphY_zadana->data()->removeBefore(deleteOldData);
@@ -254,6 +254,9 @@ void MainWindow::updateParameters() {
         ui->spinTd->value(),
         ui->comboPIDMethod->currentIndex()
         );
+
+    //m_service->updateTrybCalk();
+
 
     // Generator
     m_service->configureGenerator(

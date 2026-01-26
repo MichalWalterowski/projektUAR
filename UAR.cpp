@@ -105,8 +105,22 @@ void RegulatorPID::setNastawy(double k, double Ti, double Td, LiczCalk tryb) {
     m_k = k;
     m_Ti = Ti;
     m_Td = Td;
+
+    if (tryb != m_liczCalk)
+    {
+        if (tryb == LiczCalk::Wew)
+            m_suma_e = m_suma_e / m_Ti * 1.0;
+        else
+            m_suma_e = m_suma_e * m_Ti * 1.0;
+    }
+
+
     m_liczCalk = tryb;
 }
+
+// void updateTrybCalki()  {
+
+// }
 
 double RegulatorPID::symuluj(double e) {
     // Proporcjonalna
@@ -143,7 +157,6 @@ void RegulatorPID::resetMemory() {
     m_prev_e = 0.0;
 
     m_u_I = 0.0;
-    m_u_D = 0.0;
 }
 
 // Generator
