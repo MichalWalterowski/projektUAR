@@ -9,8 +9,8 @@
 // Model ARX
 
 ModelARX::ModelARX() : gen(std::random_device{}()) {
-    m_A = {0.5, 0.0, 0.0};
-    m_B = {-0.5, 0.0, 0.0};
+    m_A = {-0.5, 0.0, 0.0};
+    m_B = {0.5, 0.0, 0.0};
     m_k = 1;
     // Inicjalizacja buforów zerami
     m_historia_u.resize(20, 0.0);
@@ -126,18 +126,22 @@ double RegulatorPID::symuluj(double e) {
     // Proporcjonalna
     m_u_P = m_k * e * 1.0;
 
+    double I_temp = 0.0;
+
     // Całkująca
     if (m_Ti == 0.0) {
         m_u_I = 0.0; // Człon wyłączony
     } else {
         if (m_liczCalk == LiczCalk::Wew) { // Stała PRZED sumą
             m_suma_e += e / m_Ti;
-            m_u_I = m_suma_e * 1.0;
+            I_temp = m_suma_e * 1.0;
         } else { // Stała W sumie (Pod całką)
-            m_suma_e += e / m_Ti;
-            m_u_I = m_suma_e * m_k;
+            m_suma_e += e;  // / m_Ti;
+            I_temp = m_suma_e / m_Ti * 1.0;  // * m_k;
         }
     }
+
+    m_u_I = m_k * I_temp;
 
     // Różniczkująca
     m_u_D = m_Td * (e - m_prev_e) * m_k;
