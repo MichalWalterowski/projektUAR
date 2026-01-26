@@ -93,8 +93,8 @@ void UARService::configureARX(const QString &aStr, const QString &bStr, int k,
     for(const QString &s : aList) va.push_back(s.trimmed().toDouble());
     for(const QString &s : bList) vb.push_back(s.trimmed().toDouble());
 
-    if(va.empty()) va = {0.5, 0.0, 0.0};
-    if(vb.empty()) vb = {-0.5, 0.0, 0.0};
+    if(va.empty()) va = {-0.5, 0.0, 0.0};
+    if(vb.empty()) vb = {0.5, 0.0, 0.0};
 
     m_uar.getARX().setParams(va, vb, k);
     m_uar.getARX().setLimity(uMin, uMax, yMin, yMax, limityOn);

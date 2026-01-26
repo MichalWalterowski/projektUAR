@@ -48,8 +48,8 @@ private:
     UARService *m_service;
 
     // Parametry ARX
-    QString m_curA = "0.5, 0.0, 0.0";
-    QString m_curB = "-0.5, 0.0, 0.0";
+    QString m_curA = "-0.5, 0.0, 0.0";
+    QString m_curB = "0.5, 0.0, 0.0";
     int m_curK = 1;
 
     // Parametry nasycenia i szumu
