@@ -8,13 +8,12 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    // Tworzenie wykresów ręcznie i dodawanie do layoutu
+    // Tworzenie wykresów i dodawanie do layoutu
     m_plotY = new QCustomPlot();
     m_plotError = new QCustomPlot();
     m_plotU = new QCustomPlot();
     m_plotUComp = new QCustomPlot();
 
-    // Dodanie do Grid Layout w GUI
     ui->layoutPlotY->addWidget(m_plotY);
     ui->layoutPlotError->addWidget(m_plotError);
     ui->layoutPlotU->addWidget(m_plotU);
@@ -79,7 +78,7 @@ void MainWindow::setupPlots() {
     m_graphU->setPen(QPen(Qt::darkGreen));
     m_plotU->yAxis->setLabel("Sterowanie (u)");
 
-    // Wykres 4: Składowe PID
+    // Wykres 4: PID
     m_plotUComp->addGraph(); // P
     m_graphU_P = m_plotUComp->graph(0);
     m_graphU_P->setPen(QPen(Qt::red));
@@ -135,10 +134,9 @@ void MainWindow::setupConnections() {
 
 // Odbiór danych
 void MainWindow::onSimulationUpdated(SimulationData data) {
-    // Dane przychodzą gotowe w argumencie data
 
     // Dodaj dane do wykresów
-    double t = m_service->getInterval(); //data.x * (ui->spinInterval->value() / 1000.0); // Czas w sekundach
+    double t = m_service->getInterval(); // Czas w sekundach
 
     m_graphY_regulowana->addData(aktualnyCzas, data.y);
     m_graphY_zadana->addData(aktualnyCzas, data.setpoint);
@@ -151,18 +149,17 @@ void MainWindow::onSimulationUpdated(SimulationData data) {
     // Przesuwanie okna
     double windowSize = (double)ui->spinWidth->value();
 
-    //double currentTime = t;
     double startTime = aktualnyCzas - windowSize;
     if (startTime < 0) startTime = 0;
 
     // Ustawienie zakresów osi X
-    m_plotY->xAxis->setRange(startTime, aktualnyCzas);     // marginsu z prawej
+    m_plotY->xAxis->setRange(startTime, aktualnyCzas);     // Marginsu z prawej
     m_plotError->xAxis->setRange(startTime, aktualnyCzas);
     m_plotU->xAxis->setRange(startTime, aktualnyCzas);
     m_plotUComp->xAxis->setRange(startTime, aktualnyCzas);
 
     // Usuwanie starych danych
-    double deleteOldData = startTime;// - 10.0;
+    double deleteOldData = startTime;
     if (deleteOldData > 0) {
         m_graphY_regulowana->data()->removeBefore(deleteOldData);
         m_graphY_zadana->data()->removeBefore(deleteOldData);

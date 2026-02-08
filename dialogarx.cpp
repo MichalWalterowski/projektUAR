@@ -47,24 +47,21 @@ double DialogARX::getNoise() const { return ui->spinSzum->value(); }
 bool DialogARX::getLimityWlaczone() const { return ui->checkLimity->isChecked(); }
 
 void DialogARX::accept() {
-    // 1. Pobieramy tekst z pól edycji
+    // Pobieramy tekst z pól edycji
     QString textA = ui->editA->text();
     QString textB = ui->editB->text();
 
-    // 2. Liczymy elementy oddzielone przecinkami
-    // Qt::SkipEmptyParts ignoruje puste miejsca np. "1, , 2" policzy jako 2
+    // Liczymy elementy oddzielone przecinkami
     int countA = textA.split(',', Qt::SkipEmptyParts).size();
     int countB = textB.split(',', Qt::SkipEmptyParts).size();
 
-    // 3. Sprawdzamy warunek (minimum 3 współczynniki)
+    // Sprawdzamy warunek (minimum 3 współczynniki)
     if (countA < 3 || countB < 3) {
-        // Jeśli błąd -> Wyświetl komunikat
         QMessageBox::warning(this, "Błąd parametrów ARX",
                              "Proszę wprowadzić min. 3 współczynniki dla wielomianów A oraz B\n");
 
-        // Return przerywa funkcję -> okno się NIE zamyka
         return;
     }
-    // 4. Jeśli wszystko OK -> Wywołujemy oryginalną metodę, która zamyka okno
+    // Jeśli wszystko OK wywołujemy oryginalną metodę, która zamyka okno
     QDialog::accept();
 }

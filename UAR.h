@@ -2,17 +2,17 @@
 #define UAR_H
 
 #include <vector>
-#include <deque> // Zmienilem na deque dla wydajnosci
+#include <deque>
 #include <cstdlib>
 #include <cmath>
 #include <random>
 
 //using namespace std;
 
-enum LiczCalk {Wew = 0, Zew = 1}; // Wew: Stala w sumie (zalecane), Zew: Stala przed suma
+enum LiczCalk {Wew = 0, Zew = 1}; // Wew: Stala w sumie, Zew: Stala przed suma
 enum TrybGen {Sin = 0, Pros = 1};
 
-// Klasa implementująca model ARX
+// ARX
 class ModelARX
 {
 private:
@@ -25,12 +25,12 @@ private:
     std::mt19937 gen;
     std::normal_distribution<double> dist;
 
-    // Bufory historii (deque jest szybsze do przesuwania danych)
+    // Bufory historii
     std::deque<double> m_historia_u;
     std::deque<double> m_historia_y;
 
     // Ograniczenia
-    bool m_ogranicz_u = true; // Domyślnie włączone [cite: 37]
+    bool m_ogranicz_u = true;
     bool m_ogranicz_y = true;
     double m_minU = -10.0, m_maxU = 10.0;
     double m_minY = -10.0, m_maxY = 10.0;
@@ -48,7 +48,7 @@ public:
     void reset();
 };
 
-// Klasa implementująca regulator PID
+// PID
 class RegulatorPID
 {
 private:
@@ -108,7 +108,7 @@ public:
     void reset();
 };
 
-// Klasa implementująca UAR (Kontener)
+// UAR
 class ProstyUAR
 {
 private:
@@ -127,7 +127,6 @@ public:
     void reset();
     void resetPID();
 
-    // Dostep przez referencje (ważne!)
     ModelARX& getARX() { return m_ARX; }
     RegulatorPID& getPID() { return m_PID; }
     GeneratorWartosci& getGen() { return m_genWart; }

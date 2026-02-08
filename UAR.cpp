@@ -51,7 +51,7 @@ double ModelARX::symuluj(double u_raw) {
         if (u < m_minU) u = m_minU;
     }
 
-    // Aktualizacja historii sterowania (push_front)
+    // Aktualizacja historii sterowania
     m_historia_u.push_front(u);
     if (m_historia_u.size() > 100) m_historia_u.pop_back();
 
@@ -79,7 +79,7 @@ double ModelARX::symuluj(double u_raw) {
         y_temp += dist(gen);
     }
 
-    // Nasycenie wyjścia (po obliczeniach, przed zapisem do bufora)
+    // Nasycenie wyjścia
     if (m_ogranicz_y) {
         if (y_temp > m_maxY) y_temp = m_maxY;
         if (y_temp < m_minY) y_temp = m_minY;
@@ -118,9 +118,6 @@ void RegulatorPID::setNastawy(double k, double Ti, double Td, LiczCalk tryb) {
     m_liczCalk = tryb;
 }
 
-// void updateTrybCalki()  {
-
-// }
 
 double RegulatorPID::symuluj(double e) {
     // Proporcjonalna
@@ -210,7 +207,7 @@ void GeneratorWartosci::reset() {
     m_w_i = 0.0;
 }
 
-// Prosty UAR
+// UAR
 
 ProstyUAR::ProstyUAR() {}
 
@@ -225,7 +222,7 @@ double ProstyUAR::symuluj() {
     // Regulator PID
     m_u_i = m_PID.symuluj(m_e_i);
 
-    // Obiekt ARX
+    // ARX
     m_y_i = m_ARX.symuluj(m_u_i);
 
     return m_y_i;
