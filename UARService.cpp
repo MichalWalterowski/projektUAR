@@ -5,7 +5,7 @@ UARService::UARService(QObject *parent)
     : QObject(parent)
     , m_timer(new QTimer(this))
 {
-    // Łączymy tykanie timera z metodą obliczeniową
+    // Łączymy tykanie timera z metodą performStep
     connect(m_timer, &QTimer::timeout, this, &UARService::performStep);
 }
 
@@ -44,7 +44,7 @@ double UARService::getInterval() const  {
 void UARService::performStep() {
     SimulationData data;
 
-    // Logika (Matematyka)
+    // Logika
     double y = m_uar.symuluj();
 
     // Pakowanie danych

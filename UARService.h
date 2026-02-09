@@ -6,7 +6,6 @@
 #include "UAR.h"
 #include <QString>
 
-// Struktura danych
 struct SimulationData {
     double x;        // Oś czasu (nr kroku)
     double y;        // Wartość regulowana
@@ -24,7 +23,7 @@ class UARService : public QObject {
 public:
     explicit UARService(QObject *parent = nullptr);
 
-    // --- Metody sterujące symulacją (Nowość) ---
+    // --- Metody sterujące symulacją ---
     void startSimulation(int intervalMs);
     void stopSimulation();
     void resetSimulation();
@@ -32,18 +31,17 @@ public:
     void setInterval(int intervalMs); // Zmiana prędkości w locie
     double getInterval() const;
 
-    // --- Konfiguracja (bez zmian) ---
+    // --- Konfiguracja ---
     void configurePID(double k, double Ti, double Td, int trybIdx);
     void resetPID();
     // void updateTrybCalk();
     void configureGenerator(int trybIdx, double okres, double amplituda, double skladowaStala, double wypelnienie, int interwal_ms);
 
-    // Pamiętamy o bool limityOn z poprzedniego kroku
     void configureARX(const QString &aStr, const QString &bStr, int k,
                       double uMin, double uMax, double yMin, double yMax, double szumStd, bool limityOn);
 
 signals:
-    // SYGNAŁ: Wysyłany do MainWindow, gdy są nowe dane do narysowania
+    // Wysyłany do MainWindow, gdy są nowe dane do narysowania
     void simulationUpdated(SimulationData data);
 
 private slots:
